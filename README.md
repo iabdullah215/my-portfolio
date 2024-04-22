@@ -29,3 +29,5 @@ Feel free to use this code as a reference for building your own portfolio or blo
 
 
 [![Vercel Logo](/public/static/images/vercel.png)](https://vercel.com/templates/next.js/nextjs-contentlayer)
+
+[<img src="/public/static/images/vercel.png" width="30" height="30" alt="Vercel Logo">](https://vercel.com/templates/next.js/nextjs-contentlayer)
