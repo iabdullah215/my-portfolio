@@ -1,0 +1,150 @@
+---
+title: My Guide To Attack And Defense CTFs
+description: Tips and Tricks for Attack and Defence CTFs.
+date: "22024-01-19"
+---
+
+## Let's get Cracking... 
+
+In this blog, I’ll mention all the tips and tricks I know and use while playing Attack and Defence CTFs. Attack and Defence CTFs depend on how fast you are so I’ll mention what I use to speed up my work.
+
+If you want to play an attack and defense CTF feel free to click [here](https://tryhackme.com/games/koth)
+
+## Overview
+
+For all the new ones out there I’ll give you some context, King of the Hill (Koth) or Attack and Defence is a competitive hacking game, where you play against other hackers to compromise a machine and then patch its vulnerabilities to stop other players from also gaining access. The longer you maintain your access, the more points you get.
+
+## Work in splits 
+
+It is the most basic but important technique to use. Many make the mistake of using different terminals for doing different tasks. Just use a single terminal for all the tasks by simply splitting it. This will help you to reach stuff more speedily. Simply right-click on the terminal screen and click split-horizontally `ctrl+Shift+D` or split-vertically `ctrl+Shift+R` whatever you prefer the most. This will help you multitask and will increase your speed as well.
+
+![chal](/static/images/guide1.webp)
+
+![chal](/static/images/guide2.webp)
+
+## Notes
+
+Note-taking is the most important step when it comes to attack and defense. You can use any note-taking app like Notion to take notes. Type in all the commands, ways, and approaches that you have used while rooting a machine this will help you deal with similar machines in the future and you will have a complete road map as well.
+
+## Recon
+
+Mostly, people use nmap for the recon and scanning part. But I suggest using rustscan because this thing is ridiculously fast, you can make it faster if you give its documentation a read and make a config file that suits your system. You can see it on their GitHub as well.
+
+[Rustscan](https://github.com/RustScan/RustScan)
+
+```c: Downloading
+
+git clone https://github.com/RustScan/RustScan.git
+cd Rustscan
+cargo build --release // If you don't have cargo use the following command
+sudo apt-get cargo
+sudo cp target/release/rustscan /usr/local/bin/
+
+```
+
+Now after performing all of these steps, you’ll be able to run rustscan. Now let’s try it and see how fast it is.
+
+![chal](/static/images/guide3.webp)
+
+![chal](/static/images/guide4.webp)
+
+![chal](/static/images/guide5.webp)
+
+It generated this full report in just under 3 seconds.
+
+## Tools
+
+- Use `Hydra` for cracking passwords. It supports various protocols for attacks, including HTTP, HTTPS, FTP, IMAP, LDAP, SMB, and more. Hydra is known for its ability to perform brute-force and dictionary attacks to crack passwords by trying different combinations of usernames and passwords until it finds the correct one.
+- `Go-Buster` is used for finding open directories. It helps to discover hidden paths, directories, and files on web servers. The tool is particularly useful in finding sensitive information or potential vulnerabilities on a web server.
+- `Pawn Cat` is a versatile and powerful post-exploitation tool aka the GOD of reverse shells.
+- And again `Rustscan` for all the scanning.
+
+## Backdoors
+
+After entering the machine you can’t forever stay there it is a cat and mouse game someone sooner or latter will kick you out of the machine. So think wisely and leave backdoors in the machine so that you can get back rapidly and easily. Make your own backdoor in what ever language you want and use it accordingly. TBH I haven’t use this method, but I am planning to write my own backdoor soon. You can also find pre-built backdoors from Google.
+
+## After math
+
+Now suppose you have some how managed to root the machine. Now the next main step is owning the `king.txt`. For this I’ll suggest the use of chattr. Now what basically chattr is.
+
+## What is Chattr?
+
+> It is a high level security/advance permission of any file or directory in the linux system. It is used to set/unset certain attributes to a file in a Linux System to secure accidental detection or modification of important files and folders.
+
+If you want any further information related to chattr click [here](https://man7.org/linux/man-pages/man1/chattr.1.html)
+
+Lets get back to the topic. I’ll give you the tips in how you can use chattr while playing the CTF. You can use chattr to add an immutable flags on a file so that even root can not make mutations in the file without removing that immutable bit. You can use the following command to do so.
+
+```c: main
+
+chattr +i /root/king.txt
+
+```
+
+The `+i` option is used to add the immutable attribute to the file. Once the immutable attribute is set on a file, it means that the file cannot be modified, deleted, renamed, or linked to. You can remove the this bit by using the following command.
+
+```c: main
+
+chattr -i /root/king.txt
+
+```
+
+You can also use append-only or append-able on the `king.txt` file. To set the append-only attribute on a file in Linux, you can use the chattr command with the `+a` option. This attribute allows data to be added to the file only, but existing data cannot be modified or deleted. Here's how you can set the append-only attribute on `king.txt`.
+
+```c: main
+
+chattr +a /root/king.txt
+
+```
+
+If you ever need to remove the append-only attribute, you can use the following command.
+
+```c: main
+
+chattr -a /root/king.txt
+
+```
+
+Another thing that you can do is that you restrict the root users from overwriting in the `king.txt`. This can be done by using clobber, by using the command.
+
+```c: main
+
+set -o noclobber
+
+```
+
+## Now what this command is doing?
+
+> This command is restricting the users from using the “>” operator. It is restricting the commands like following:
+
+```c: main
+
+echo "MnM" > king.txt
+
+```
+
+## Patching and Defending
+
+This is the most important and crucial step of the whole process. After setting up backdoors start patching the weak points and vulnerabilities. Start from the path you used to get into the machine. Also make sure to use the commands like
+
+```c: main
+
+who
+ps aux | grep pts
+
+```
+
+- `ps`: This command is used to display information about currently running processes.
+- `aux`: These are options for the `ps` command. In this context, `a` stands for all users, and `u` stands for a more detailed output.
+- `|`: This is a pipe symbol, and it is used to send the output of one command as the input to another.
+- `grep pts`: This part of the command uses `grep` to search for lines in the output of the `ps aux` command that contain the string `pts`.
+
+Look for the most common possible ways to patch a box i.e. changing ssh keys, changing passwords, look for the processes that are running on the machine.
+
+Again this is not the preferred way everyone has their own perspectives, methods and ways to look at things. This is my way of playing the CTFs. But at the end of the day I hope you liked the blog, See you in the next one.
+
+Stay in the loop with my latest content – follow me on [Medium](https://medium.com/@iabdullah_215) for more!
+
+## THANKS
+
+## MUHAMMAD ABDULLAH
