@@ -1,0 +1,45 @@
+---
+title: Cyber Quest CTF 2023 - Crypto
+description:  It was a fairly simple, yet a time consuming crypto challenge.
+date: "2023-12-22"
+---
+
+## Challenge Description
+
+A person of age 64 gave coins to a boy of age 32 to buy 16 pens. Suddenly he dropped all 13 coins on the floor. He counted those coins 35 times.
+
+## Encrypted Text
+
+```c: text
+
+R1UyQ0FOREJFQTJUSUlCWE1JUURPTUJBR1kzQ0FORERFQTJXTUlCVkdJUURJT0pBR1UzQ0FOTEdFQTJUUUlCVUdZUURNTlJBR1UyU0FOTEdFQTNURUlCVEc0UURLWlJBR1JTU0FOUldFQTJEU0lCV0dJUURHTUpBR1EyU0FOWllFQTJXTUlCV01VUURFTUpBR1JSQ0FOSlpFQTJXTUlCVEhBUURPTVJBR1JRU0FOSldFQTNHQ0lCWE1RPT09PT09
+
+```
+
+## Solution
+
+Firstly I decoded the whole string using a base 64 decoder.
+
+![first](/static/images/crypto1.webp)
+
+![first](/static/images/crypto2.webp)
+
+After that, I decrypted the respective string using the base 32 decoder.
+
+![Second](/static/images/crypto3.webp)
+
+After this, I converted the hexa-output into plain text.
+
+![Third](/static/images/crypto4.webp)
+
+Now I used the rotation cipher to fully decode the flag.
+
+![flag](/static/images/crypto5.png)
+
+Flag: `CSC{yoU_ARE_GOoD_a7_WoRk1Ng_w!TH_8aSEs}`
+
+Stay in the loop with my latest content – follow me on [Medium](https://medium.com/@iabdullah_215) for more!
+
+## THANKS
+
+## MUHAMMAD ABDULLAH
