@@ -1,6 +1,6 @@
 # Portfolio & Blog Website
 
-This website serves as a platform for me to display my portfolio, including projects, skills, and experience. Additionally, I use it to write and share blog posts on topics I'm passionate about, such as technology, programming, and personal development.
+This website serves as a platform for me to display my portfolio, including projects, skills, and experience. Additionally, I use it to write and share blog posts on topics I'm passionate about, such as hacking, CTFs, and many more.
 
 ## Features
 
