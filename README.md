@@ -28,4 +28,4 @@ Open your web browser and visit `https://iabdullah.vercel.app` to see the websit
 Feel free to use this code as a reference for building your own portfolio or blog website. If you make any modifications or use this code in your projects, please give credit where due.
 
 
-[![Vercel Logo]()](https://vercel.com/templates/next.js/nextjs-contentlayer)
+[![Vercel Logo](/static/images/vercel.png)](https://vercel.com/templates/next.js/nextjs-contentlayer)
