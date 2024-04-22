@@ -1,0 +1,66 @@
+---
+title: AirTech CTF 2024 - Back To The Bases
+description: A network forensics CTF chall. writeup.
+date: "2024-03-1"
+---
+
+## Let's get Cracking...
+
+## Challenge 01: Back to the bases
+
+![first](/static/images/Chal1.PNG)
+
+There was a Wire Shark file given in order for us solve the challenge. You can also download the challenge file by clicking [here](https://drive.google.com/file/d/1GxLGt2S1KLYBKQAXET9-4UoKqC1StOuk/view?usp=sharing)
+
+When I opened the file I noticed that there are some `TCP` packets.
+
+![first](/static/images/TCP1.PNG)
+
+So without any delay I followed the `TCP` Stream from `Analyze > Follow > TCP Stream` menu. After following it I found the following chat.
+
+![first](/static/images/chat1.PNG)
+
+As they are talking about a file. So I applied the FTP filter and found a `flag.txt` file.
+
+![first](/static/images/FTP1.PNG)
+
+So I extracted it from `File > Extract Object > FTP Data`.
+
+![first](/static/images/extract1.PNG)
+
+After saving and opening the file I found the following text.
+
+![first](/static/images/flagTXT.png)
+
+``` CIPHER
+
+AFAi^Xd%^W  ^TA ^XAj]j]j]!)btGBQZUQhvA--
+
+```
+
+Now if you remember from the chat there where two more leads as well.
+
+![first](/static/images/chat1.PNG)
+
+- Can you pass me the `XOR` key.
+- ssure btw its `5`
+
+So I simply opened [CyberChief](https://gchq.github.io/CyberChef/) and typed `XOR` and used `05` as the key but sadly it didn't work.
+
+![first](/static/images/CyberChief1.PNG)
+
+But when you have a key you always have the option to Brute Force it. When I Brute Forced the cipher I found a base64 encoded string.
+
+![first](/static/images/CyberChief2.PNG)
+
+Simply decoded the string and got the flag.
+
+![first](/static/images/flag.PNG)
+
+Flag: `AT24{y4m44444t33333_kud@$@1}`
+
+Stay in the loop with my latest content – follow me on [Medium](https://medium.com/@iabdullah_215) for more!
+
+## THANKS
+
+## MUHAMMAD ABDULLAH
