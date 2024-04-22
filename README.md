@@ -25,4 +25,6 @@ Open your web browser and visit `https://iabdullah.vercel.app` to see the websit
 
 ## Usage
 
-[<img src="/public/static/images/vercel.png" width="50" height="50" alt="Vercel Logo">](https://vercel.com/templates/next.js/nextjs-contentlayer) **Feel free to use this code as a reference for building your own portfolio or blog website.**
+[<img src="/public/static/images/vercel.png" width="50" height="50" alt="Vercel Logo">](https://vercel.com/templates/next.js/nextjs-contentlayer)
+
+**Feel free to use this code as a reference for building your own portfolio or blog website.**
