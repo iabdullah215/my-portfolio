@@ -1,4 +1,4 @@
-// components/MDXComponents.tsx
+// components/mdx-components.tsx
 import React from 'react';
 
 const CodeBlock = (props) => {
