@@ -1,11 +1,11 @@
+import { MDXProvider } from '@mdx-js/react';
+import MDXComponents from '@/components/mdx-components';
 import Link from "next/link";
 import "./globals.css";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Analytics } from "@/components/analytics";
 import { ModeToggle } from "@/components/mode-toggle";
-import { MDXProvider } from "@mdx-js/react";
-import MDXComponents from "@/components/mdx-components";
 
 const inter = Inter({ subsets: ["latin"] });
 
