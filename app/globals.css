@@ -1,3 +1,20 @@
+/* globals.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Custom styles for code blocks */
+pre {
+  @apply bg-code-bg text-code-text p-4 rounded-md overflow-auto;
+  font-family: 'Source Code Pro', monospace;
+}
+
+code {
+  @apply font-code text-sm;
+}
+
+/* Custom styles for inline code */
+code.inline {
+  @apply bg-inline-code-bg text-code-text p-1 rounded;
+  border: 1px solid #d0d0d0; /* Light gray border */
+}
