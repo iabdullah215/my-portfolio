@@ -1,16 +1,17 @@
-import Image from "next/image"
-import { useMDXComponent } from "next-contentlayer/hooks"
+// components/MDXComponents.tsx
+import React from 'react';
 
-const components = {
-  Image,
-}
+const CodeBlock = (props) => {
+  return <pre {...props} />;
+};
 
-interface MdxProps {
-  code: string
-}
+const InlineCode = (props) => {
+  return <code className="inline" {...props} />;
+};
 
-export function Mdx({ code }: MdxProps) {
-  const Component = useMDXComponent(code)
+const MDXComponents = {
+  pre: CodeBlock,
+  code: InlineCode,
+};
 
-  return <Component components={components} />
-}
+export default MDXComponents;
