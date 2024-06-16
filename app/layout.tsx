@@ -1,21 +1,19 @@
-import { MDXProvider } from '@mdx-js/react';
-import MDXComponents from '@/components/mdx-components';
-import Link from "next/link";
-import "./globals.css";
-import { Inter } from "next/font/google";
-import { ThemeProvider } from "@/components/theme-provider";
-import { Analytics } from "@/components/analytics";
-import { ModeToggle } from "@/components/mode-toggle";
+import Link from "next/link"
+import "./globals.css"
+import { Inter } from "next/font/google"
+import { ThemeProvider } from "@/components/theme-provider"
+import { Analytics } from "@/components/analytics"
+import { ModeToggle } from "@/components/mode-toggle"
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
   title: "!abdullah",
-  description: "A portfolio/blog website",
-};
+  description: "My Blog/Portfolio Website",
+}
 
 interface RootLayoutProps {
-  children: React.ReactNode;
+  children: React.ReactNode
 }
 
 export default function RootLayout({ children }: RootLayoutProps) {
@@ -35,13 +33,11 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 </nav>
               </div>
             </header>
-            <MDXProvider components={MDXComponents}>
-              <main>{children}</main>
-            </MDXProvider>
+            <main>{children}</main>
           </div>
           <Analytics />
         </ThemeProvider>
       </body>
     </html>
-  );
+  )
 }
