@@ -1,1 +1,86 @@
+---
+title: ICCA - Exam Review
+description: My ICCA Exam Review
+date: "2024-07-06"
+---
 
+I started my ICCA exam prep on June 25, 2024 and gave my exam on July 7, 2024. And received a much awaited email the same day stating:
+
+`Hello Abdullah, Congratulations on receiving your INE Certified Cloud Associate Certification`
+
+## Background:
+
+I was basically preparing for the **eJPT** exam and was waiting for the right discount to buy the voucher. When the June Sale arrived I thought this is the right time to buy the **INE Fundamentals Annual**. At that time it was coming with free **eJPT** and **ICCA** exam vouchers. So without any further a do I bought the **INE Fundamentals Annual** bundle.
+
+![image](https://github.com/iabdullah215/my-portfolio/assets/121729444/5137ecd5-e9b2-42c2-966b-b72b307522a2)
+
+![image](https://github.com/iabdullah215/my-portfolio/assets/121729444/3ce26383-9e72-4152-8e9c-a5db7a829f3f)
+
+So, after I bought the bundle I kept my **eJPT** prep on hold for a few days and started the preparation for **ICCA**. I took the preparation seriously because I didn’t wanted to waste this chance.
+
+## About the exam:
+
+The [INE Certified Cloud Associate](https://ine.com/learning/certifications/internal/icca-ine-certified-cloud-associate) certification serves as an entry-level accreditation, providing a comprehensive overview of fundamental cloud computing principles.
+
+What sets this certification apart is its vendor-neutral approach, steering clear of tying candidates to a single provider like AWS or Azure.
+Instead, the course covers general cloud concepts and their implementation across the three major cloud platforms:
+
+- Amazon (AWS)
+- Microsoft (Azure)
+- Google (GCP)
+
+As one of the few, if not the only, entry-level multi-cloud courses with both theoretical and hands-on components, it covers essential concepts and practical aspects across the three leading cloud providers.
+
+## Preparation:
+
+For my preparation I choose the provided **ICCA Learning Path**. The course was okay. I wouldn’t say it was the most impressive one out there but it was enough to make you exam ready. It covered the following topic:
+
+- Cloud Basics
+- Cloud Deployment Models
+- Cloud Management
+- Cloud Shared Responsibility Model
+- Cloud Services & Providers
+- Cloud Identity & Access Management (IAM)
+
+![image](https://github.com/iabdullah215/my-portfolio/assets/121729444/cfceae4b-0016-490d-af0d-35e4a8d06901)
+
+It took me around 10 days to complete the whole learning path. I was studying two to three hours at night along side 9 to 5 onsite internship in the day. So, yes I guess 10 days is still pretty fast xD.
+
+## Pros & Cons:
+
+**Pros:**
+- Short course (16h) compared to other INE courses (eJPTv2 is 156h!).
+- ICCA now includes free access to AWS/Azure/GCP to practice the labs.
+- **Tracy Wallace** is a highly knowledgeable and engaging instructor with a great sense of humor. You won’t get bored of him.
+- The course effectively guides you from a basic to a solid understanding of foundational cloud knowledge.
+- Additionally, the open-book exam allows you to refer to your notes or cloud provider documentation.
+
+**Cons:**
+- The included slides lack substantial material coverage, with approximately 80% of the content being verbally explained and presented on a whiteboard by Tracy Wallace.
+- Consequently, a concerted effort is needed to actively listen and meticulously note down the crucial concepts he explains.
+- Some questions in the exam caught me off guard, and I couldn’t recall them being covered in the course material. Fortunately, my preparation involved going through supplementary resources, which proved beneficial, along with consulting the appropriate vendor documentation.
+
+## Notes That I Took:
+
+https://github.com/iabdullah215/ICCA-Notes
+
+Following repo has the Lab Walkthroughs.
+
+https://github.com/iabdullah215/WriteUps/tree/main/INE/ICCA
+
+## Resources:
+
+- https://craignewtondev.medium.com/how-i-passed-the-ine-certified-cloud-associate-icca-exam-d46b65664a63
+- https://blog.syselement.com/ine/courses/icca
+- https://blog.syselement.com/ine/courses/icca/icca-references
+- https://learn.microsoft.com/en-us/azure/security/fundamentals/shared-responsibility
+- https://aws.amazon.com/compliance/shared-responsibility-model/
+- https://nvlpubs.nist.gov/nistpubs/legacy/sp/nistspecialpublication800-145.pdf
+
+I hope this blog is enough to provide you the guideline you needed. At the end here is my shiny certificate xD.
+
+![image](https://github.com/iabdullah215/my-portfolio/assets/121729444/cc5c57b5-18f3-4fb7-af2a-1b1376de1993)
+
+
+## THANKS
+## MUHAMMAD ABDULLAH
