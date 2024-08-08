@@ -12,7 +12,6 @@ const certifications = [
     imageSrc: "/Certs/ICCA.png",
     description: "By INE",
   },
-  // Add more certifications as needed
 ];
 
 export default function Cert() {
