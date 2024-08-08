@@ -3,14 +3,14 @@ import Image from "next/image";
 
 const certifications = [
   {
-    title: "Certification 1",
-    imageSrc: "/path/to/cert1.jpg",
-    description: "Description for certification 1.",
+    title: "Certified in Cyber Security",
+    imageSrc: "public/Certs/CC.png",
+    description: "By ISC2",
   },
   {
-    title: "Certification 2",
-    imageSrc: "/path/to/cert2.jpg",
-    description: "Description for certification 2.",
+    title: "INE Certified Cloud Associate",
+    imageSrc: "public/Certs/ICCA.png",
+    description: "By INE",
   },
   // Add more certifications as needed
 ];
