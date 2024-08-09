@@ -12,6 +12,11 @@ const certifications = [
     imageSrc: "/Certs/ICCA.png",
     description: "By INE",
   },
+  {
+    title: "ISO/IEC 2700:2022 Information Security Associate",
+    imageSrc: "/Certs/SkillFront.png",
+    description: "By Skill Front",
+  },
 ];
 
 export default function Cert() {
