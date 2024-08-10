@@ -1,9 +1,14 @@
-import { allPosts } from "@/.contentlayer/generated"
-import Link from "next/link"
+import { allPosts } from "@/.contentlayer/generated";
+import Link from "next/link";
 
 export default function Home() {
   // Sort posts by date in descending order (newest first)
-  const sortedPosts = allPosts.sort((a, b) => new Date(b.date) - new Date(a.date));
+  const sortedPosts = allPosts.sort((a, b) => {
+    const dateA = new Date(a.date);
+    const dateB = new Date(b.date);
+    
+    return dateB.getTime() - dateA.getTime();
+  });
 
   return (
     <div className="prose dark:prose-invert">
@@ -16,5 +21,5 @@ export default function Home() {
         </article>
       ))}
     </div>
-  )
+  );
 }
