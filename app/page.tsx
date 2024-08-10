@@ -2,7 +2,6 @@ import { allPosts } from "@/.contentlayer/generated";
 import Link from "next/link";
 
 export default function Home() {
-  // Sort posts by date in descending order (newest first)
   const sortedPosts = allPosts.sort((a, b) => {
     const dateA = new Date(a.date);
     const dateB = new Date(b.date);
@@ -13,7 +12,8 @@ export default function Home() {
   return (
     <div className="prose dark:prose-invert">
       {/* Heading */}
-      <h1 className="text-3xl font-bold mb-8 pt-6">Blogs</h1>
+      <h1 className="text-3xl font-bold mt-4 mb-4 pt-6">Blogs</h1>
+      <hr className="border-t border-gray-300 dark:border-gray-700 my-4" />
 
       {/* Blog posts */}
       {sortedPosts.map((post, index) => (
