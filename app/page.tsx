@@ -26,11 +26,11 @@ export default function Home() {
       {/* Heading */}
       <h1 className="text-3xl font-bold mt-4 mb-2 pt-6">Blogs</h1>
       {/* Description below the heading */}
-      <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
+      <p className="text-lg text-gray-600 dark:text-gray-400 mb-6">
         Welcome to my blog! Here you&apos;ll find a collection of my latest posts on various topics. Enjoy reading!
       </p>
       {/* Search bar */}
-      <div className="mb-8">
+      <div className="mb-4">
         <input
           type="text"
           placeholder="Search..."
