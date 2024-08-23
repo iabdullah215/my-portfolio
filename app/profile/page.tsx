@@ -2,7 +2,7 @@ import Image from 'next/image';
 
 const ProfilePage = () => {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background-light dark:bg-background-dark overflow-hidden mt-[-60px]">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-background-light dark:bg-background-dark overflow-hidden mt-[-70px]">
       <div className="relative w-40 h-40 mb-6">
         <Image
           src="/static/images/mr.r0b0t.jpg"
