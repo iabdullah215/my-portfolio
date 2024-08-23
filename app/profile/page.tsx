@@ -5,7 +5,7 @@ const ProfilePage = () => {
     <div className="flex flex-col items-center justify-center min-h-screen bg-white dark:bg-gray-900">
       <div className="relative w-32 h-32 mb-4">
         <Image
-          src="/path/to/your-picture.jpg"
+          src="/static/images/mr.r0b0t.jpg"
           alt="Profile Picture"
           layout="fill"
           className="rounded-full object-cover"
