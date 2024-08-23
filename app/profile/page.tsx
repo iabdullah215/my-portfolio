@@ -18,6 +18,7 @@ const ProfilePage = () => {
         From the shadows, I control.
       </p>
     </div>
+  
   );
 };
 
