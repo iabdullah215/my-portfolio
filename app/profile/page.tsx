@@ -15,7 +15,7 @@ const ProfilePage = () => {
         !abdu11ah
       </h1>
       <p className="text-lg text-gray-600 dark:text-gray-300 text-center">
-        Your description goes here. You can add any information about yourself or your work.
+        From the shadows, I control.
       </p>
     </div>
   );
