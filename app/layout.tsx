@@ -1,18 +1,18 @@
-import Link from "next/link"
-import "./globals.css"
-import { Inter } from "next/font/google"
-import { ThemeProvider } from "@/components/theme-provider"
-import { Analytics } from "@/components/analytics"
+import Link from "next/link";
+import "./globals.css";
+import { Inter } from "next/font/google";
+import { ThemeProvider } from "@/components/theme-provider";
+import { Analytics } from "@/components/analytics";
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
   title: "!abdu11ah",
   description: "My Blog/Portfolio Website",
-}
+};
 
 interface RootLayoutProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 export default function RootLayout({ children }: RootLayoutProps) {
@@ -34,11 +34,15 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 </nav>
               </div>
             </header>
-            <main>{children}</main>
+            
+            {/* Add 'prose' for typography styling */}
+            <main className="prose dark:prose-dark">
+              {children}
+            </main>
           </div>
           <Analytics />
         </ThemeProvider>
       </body>
     </html>
-  )
+  );
 }
