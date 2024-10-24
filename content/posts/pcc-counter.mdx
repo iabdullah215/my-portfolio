@@ -1,0 +1,104 @@
+---
+title: PCC Quals 2024 - Counter
+description: A AES based crypto challenge
+date: "2024-10-19"
+---
+
+This blog has the solution for a crypto challenge that I solved at the [Pakistan Cyber Security Challenges Qualification Round 2024](https://ctf-pcc.nccs.pk/).
+
+## Counter:
+**Challenge Description**: its so frustrating to generate key again and again. 
+
+We were provided with the following files.
+
+```console
+.
+├── challenge.py
+├── docker-compose.yml
+├── Dockerfile.dist
+├── flag.txt
+└── new.py
+```
+
+The `challenge.py` had the following script.
+
+```
+#!/usr/local/bin/python3
+
+import random
+from Crypto.Util.number import long_to_bytes
+from Crypto.Cipher import AES
+from Crypto.Util import Counter
+from Crypto.Util.Padding import pad
+
+def get_flag():
+    try:
+        with open("/flag.txt", "rb") as f:
+            FLAG = f.read().strip()
+        return FLAG
+    except:
+        print("[ERROR] - Please contact an Administrator.")
+
+key = random.randbytes(16)
+
+def encrypt(data: bytes) -> bytes:
+    cipher = AES.new(key, AES.MODE_CTR, counter=Counter.new(128))
+    return cipher.encrypt(data)
+
+# you'll have to find this, i guess.
+f = open("a_quote_from_a_leader.txt", "rb")
+data = f.read()
+f.close()
+
+encrypted = encrypt(data)
+print(f"Encrypted Data: {encrypted.hex()}")
+
+flag = get_flag()
+
+encrypted_flag = encrypt(flag)
+print(f"Encrypted Flag: {encrypted_flag.hex()}")
+```
+
+## Script Breakdown:
+This Python script encrypts both a quote from a file and a flag using AES encryption in CTR mode. First, the `get_flag()` function attempts to read the flag from a file `/flag.txt`, returning its content if successful, or printing an error message if the file cannot be accessed. The script generates a random 16-byte key using `random.randbytes(16)`. The encryption is performed by the `encrypt()` function, which initializes an AES cipher in CTR mode with a 128-bit counter. The content of the file `a_quote_from_a_leader.txt` is read, encrypted using this cipher, and then printed in hexadecimal format. Afterward, the flag is fetched using the `get_flag()` function, encrypted similarly, and also printed in hexadecimal format. The user must discover the flag by reversing the process, but the random key and dynamic counter make decryption challenging without access to the original key and counter values.
+
+## Solution:
+**Hint**: The quote is of Quaid-e-azam
+
+So by looking at the hint I searched for quotes of Quaid-e-Azam and added them in my script one after the other and the one quote that gave me the flag was 
+
+`I do not believe in taking the right decision, I take a decision and make it right`.
+
+```python
+
+from Crypto.Util.number import long_to_bytes
+
+def xor_bytes(a: bytes, b: bytes) -> bytes:
+    return bytes(x ^ y for x, y in zip(a, b))
+
+def get_flag(known_guess: str, encrypted_quote_hex: str, encrypted_flag_hex: str):
+    encrypted_quote = bytes.fromhex(encrypted_quote_hex)
+    encrypted_flag = bytes.fromhex(encrypted_flag_hex)
+    guess_bytes = known_guess.encode()
+    keystream_guess = xor_bytes(guess_bytes, encrypted_quote[:len(guess_bytes)])
+    decrypted_flag_guess = xor_bytes(encrypted_flag[:len(keystream_guess)], keystream_guess)
+    return decrypted_flag_guess.decode(errors='ignore')
+
+encrypted_quote_hex = "5667c3646a39e6bf6b1d098aadd003671854a7eab5ceaa3ad1ba21a9754cded388dc883114f7b1ee9aafb360c2d7ca48e8974903636a3f39b623784e344404bd8c29e178d08b033534848bf408e55f8292586f"
+encrypted_flag_hex = "4f04e4700925b8a9141b1e87a3d2446c5f62f8b99eccf163d38272a96b7198e9d8e8883242e29dfeb2a1"
+
+original_quote = "I do not believe in taking the right decision, I take a decision and make it right."
+flag = get_flag(original_quote, encrypted_quote_hex, encrypted_flag_hex)
+print(flag)
+```
+
+> The challenge was an instance based challenge and you get the values `encrypted_quote_hex` and `encrypted_flag_hex` from the instance.
+
+Running the script gives you the complete flag:
+
+```console
+n0tabdu11ah@MNM:~/Downloads/crypto-count$ python3 exploit.py 
+PCC{Cr1b_dragg1ng_1s_c00l_stvXfH9ShwvqIsA}
+```
+
+**Flag**: `PCC{Cr1b_dragg1ng_1s_c00l_stvXfH9ShwvqIsA}`
