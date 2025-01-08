@@ -17,6 +17,11 @@ const certifications = [
     imageSrc: "/Certs/SkillFront.png",
     description: "By Skill Front",
   },
+    {
+    title: "INE Certified Jr. Penetration Tester",
+    imageSrc: "/Certs/certificate.png",
+    description: "By INE",
+  },
 ];
 
 export default function Cert() {
