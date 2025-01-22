@@ -22,6 +22,11 @@ const certifications = [
     imageSrc: "/Certs/certificate.png",
     description: "By INE",
   },
+    {
+    title: "Certified Network Security Practitioner",
+    imageSrc: "/Certs/CNSP.png",
+    description: "By SecOps Group",
+  },
 ];
 
 export default function Cert() {
