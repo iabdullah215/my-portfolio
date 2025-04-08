@@ -29,8 +29,8 @@ const certifications = [
   },
     {
     title: "Certified Red Team Analyst",
-    imageSrc: "/Certs/CNSP.png",
-    description: "By SecOps Group",
+    imageSrc: "/Certs/CRTA.png",
+    description: "By CyberWarfare Labs",
   },
 ];
 
