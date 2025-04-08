@@ -27,6 +27,11 @@ const certifications = [
     imageSrc: "/Certs/CNSP.png",
     description: "By SecOps Group",
   },
+    {
+    title: "Certified Red Team Analyst",
+    imageSrc: "/Certs/CNSP.png",
+    description: "By SecOps Group",
+  },
 ];
 
 export default function Cert() {
