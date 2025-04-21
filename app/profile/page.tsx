@@ -12,7 +12,7 @@ const ProfilePage = () => {
         />
       </div>
       <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-1">
-        !abdu11ah
+        n0tabdu11ah
       </h1>
       <p className="text-lg text-gray-600 dark:text-gray-300 text-center">
         From the shadows, I control.
