@@ -32,6 +32,11 @@ const certifications = [
     imageSrc: "/Certs/CRTA.png",
     description: "By CyberWarfare Labs",
   },
+    {
+    title: "Certified Penetration Testing Specialist",
+    imageSrc: "/Certs/CPTS.png",
+    description: "By HackTheBox",
+  },
 ];
 
 export default function Cert() {
