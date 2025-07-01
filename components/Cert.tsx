@@ -37,6 +37,11 @@ const certifications = [
     imageSrc: "/Certs/CPTS.png",
     description: "By HackTheBox",
   },
+    {
+    title: "Full House Mini Pro Lab",
+    imageSrc: "/Certs/FullHouse.png",
+    description: "By HackTheBox",
+  },
 ];
 
 export default function Cert() {
