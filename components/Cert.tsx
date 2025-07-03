@@ -38,8 +38,13 @@ const certifications = [
     description: "By HackTheBox",
   },
     {
-    title: "Full House Mini Pro Lab",
+    title: "Full House - Mini Pro Lab",
     imageSrc: "/Certs/FullHouse.png",
+    description: "By HackTheBox",
+  },
+    {
+    title: "P.O.O - Mini Pro Lab",
+    imageSrc: "/Certs/P.O.O.png",
     description: "By HackTheBox",
   },
 ];
