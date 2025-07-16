@@ -52,6 +52,11 @@ const certifications = [
     imageSrc: "/Certs/Dante.png",
     description: "By HackTheBox",
   },
+   {
+    title: "Zephyr - Pro Lab",
+    imageSrc: "/Certs/Zephyr.png",
+    description: "By HackTheBox",
+  },
 ];
 
 export default function Cert() {
