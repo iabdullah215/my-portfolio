@@ -62,6 +62,11 @@ const certifications = [
     imageSrc: "/Certs/Solar.png",
     description: "By HackTheBox",
   },
+  {
+    title: "Offshore - Pro Lab",
+    imageSrc: "/Certs/Offshore.png",
+    description: "By HackTheBox",
+  },
 ];
 
 export default function Cert() {
