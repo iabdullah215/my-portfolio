@@ -67,6 +67,11 @@ const certifications = [
     imageSrc: "/Certs/Offshore.png",
     description: "By HackTheBox",
   },
+  {
+    title: "Open Access Artical",
+    imageSrc: "/Certs/artical1.png",
+    description: "MDPI Publication",
+  },
 ];
 
 export default function Cert() {
