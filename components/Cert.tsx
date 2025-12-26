@@ -72,6 +72,16 @@ const certifications = [
     imageSrc: "/Certs/artical1.png",
     description: "MDPI Publication",
   },
+  {
+    title: "Certified Scanning Strategies and Best Practices Specialist",
+    imageSrc: "/Certs/Qualys1.png",
+    description: "Qualys",
+  },
+  {
+    title: "Certified Vulnerability Management, Detection, and Response Specialist",
+    imageSrc: "/Certs/Qualys2.png",
+    description: "Qualys",
+  },
 ];
 
 export default function Cert() {
