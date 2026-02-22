@@ -37,7 +37,10 @@ export function AnalyticsEvents() {
 
       if (isExternalHref(href, window.location.origin)) {
         const text = anchor.textContent?.trim();
-        const payload = text ? { href, text } : { href };
+        const payload: Record<string, string> = { href };
+        if (text) {
+          payload.text = text;
+        }
         track("outbound_link", payload);
       }
     };
