@@ -30,9 +30,23 @@ export async function generateMetadata({
     return {}
   }
 
+  const siteUrl = "https://iabdullah.vercel.app"
+  const postUrl = `${siteUrl}/posts/${post.slugAsParams}`
+
   return {
     title: post.title,
     description: post.description,
+    openGraph: {
+      title: post.title,
+      description: post.description,
+      type: "article",
+      url: postUrl,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description: post.description,
+    },
   }
 }
 

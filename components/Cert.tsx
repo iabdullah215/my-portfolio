@@ -93,7 +93,7 @@ export default function Cert() {
             <Image src={cert.imageSrc} alt={cert.title} width={300} height={200} className="rounded-lg" />
           </div>
           <div className="md:w-1/2 p-4">
-            <h3 className="text-xl font-bold mb-2">{cert.title}</h3>
+            <h2 className="text-xl font-bold mb-2">{cert.title}</h2>
             <p>{cert.description}</p>
           </div>
         </div>

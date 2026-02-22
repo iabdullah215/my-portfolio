@@ -3,6 +3,7 @@ import "./globals.css";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Analytics } from "@/components/analytics";
+import { AnalyticsEvents } from "@/components/analytics-events";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -23,6 +24,12 @@ export default function RootLayout({ children }: RootLayoutProps) {
       >
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <div className="max-w-2xl mx-auto py-10 px-4">
+            <a
+              href="#main-content"
+              className="sr-only focus:not-sr-only focus:mb-4 focus:inline-block focus:rounded focus:bg-slate-900 focus:px-3 focus:py-2 focus:text-white"
+            >
+              Skip to content
+            </a>
             <header>
               <div className="flex items-center justify-between">
                 {/* Removed ModeToggle */}
@@ -36,11 +43,12 @@ export default function RootLayout({ children }: RootLayoutProps) {
             </header>
             
             {/* Add 'prose' for typography styling */}
-            <main className="prose dark:prose-dark">
+            <main id="main-content" className="prose dark:prose-dark">
               {children}
             </main>
           </div>
           <Analytics />
+          <AnalyticsEvents />
         </ThemeProvider>
       </body>
     </html>
