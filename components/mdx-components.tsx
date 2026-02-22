@@ -5,6 +5,7 @@ function MdxImage(props: ImageProps) {
   return (
     <Image
       {...props}
+      alt={props.alt ?? ""}
       loading={props.loading ?? "lazy"}
       sizes={props.sizes ?? "(min-width: 768px) 768px, 100vw"}
       className={["rounded-lg", props.className].filter(Boolean).join(" ")}

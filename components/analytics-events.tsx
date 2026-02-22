@@ -36,10 +36,9 @@ export function AnalyticsEvents() {
       }
 
       if (isExternalHref(href, window.location.origin)) {
-        track("outbound_link", {
-          href,
-          text: anchor.textContent?.trim() || undefined,
-        });
+        const text = anchor.textContent?.trim();
+        const payload = text ? { href, text } : { href };
+        track("outbound_link", payload);
       }
     };
 
