@@ -33,16 +33,16 @@ export function BinaryRain({ className = "" }: BinaryRainProps) {
     let drops: number[] = [];
 
     const resize = () => {
-      // Measure the canvas's own rendered box so it works whether it's
-      // absolutely filling a section or fixed to the whole viewport.
-      width = canvas.clientWidth;
-      height = canvas.clientHeight;
+      // Measure the canvas's rendered box (it fills its positioned parent via
+      // the width/height:100% set in JSX). We only resize the drawing BUFFER
+      // here — never the CSS size — so the element keeps filling the viewport.
+      const rect = canvas.getBoundingClientRect();
+      width = rect.width;
+      height = rect.height;
       if (!width || !height) return;
       const dpr = window.devicePixelRatio || 1;
-      canvas.width = Math.floor(width * dpr);
-      canvas.height = Math.floor(height * dpr);
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       columns = Math.max(1, Math.floor(width / fontSize));
       drops = Array.from({ length: columns }, () =>
@@ -105,5 +105,14 @@ export function BinaryRain({ className = "" }: BinaryRainProps) {
     };
   }, [resolvedTheme]);
 
-  return <canvas ref={canvasRef} aria-hidden="true" className={className} />;
+  // width/height:100% forces the replaced <canvas> to fill its positioned
+  // box (fixed inset-0 → viewport); inset-0 alone would not stretch it.
+  return (
+    <canvas
+      ref={canvasRef}
+      aria-hidden="true"
+      style={{ display: "block", width: "100%", height: "100%" }}
+      className={className}
+    />
+  );
 }
