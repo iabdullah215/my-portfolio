@@ -1,4 +1,16 @@
 import { defineDocumentType, makeSource } from "contentlayer/source-files"
+import rehypePrettyCode from "rehype-pretty-code"
+
+/** @type {import('rehype-pretty-code').Options} */
+const prettyCodeOptions = {
+  // Dual themes: emits --shiki-light / --shiki-dark vars consumed in globals.css
+  theme: {
+    light: "github-light",
+    dark: "github-dark-dimmed",
+  },
+  // We paint the <pre> background ourselves with theme tokens
+  keepBackground: false,
+}
 
 /** @type {import('contentlayer/source-files').ComputedFields} */
 const computedFields = {
@@ -58,4 +70,7 @@ export const Post = defineDocumentType(() => ({
 export default makeSource({
   contentDirPath: "./content",
   documentTypes: [Post, Page],
+  mdx: {
+    rehypePlugins: [[rehypePrettyCode, prettyCodeOptions]],
+  },
 })

@@ -41,9 +41,9 @@ export default function BlogPage() {
   });
 
   return (
-    <div className="prose dark:prose-invert">
-      <h1 className="text-3xl font-bold mt-4 mb-2 pt-6">Blogs</h1>
-      <p className="text-lg text-gray-700 dark:text-gray-300 mb-6">
+    <div className="prose">
+      <h1 className="font-mono text-3xl font-bold mt-4 mb-2 pt-6">Blogs</h1>
+      <p className="text-lg text-muted-foreground mb-6">
         Collection of my thoughts on various topics
       </p>
       <form
@@ -63,7 +63,7 @@ export default function BlogPage() {
           placeholder="Search..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full p-2 border border-gray-300 rounded dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+          className="w-full p-2 rounded border border-border bg-muted text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-ring/40"
         />
       </form>
 
@@ -73,7 +73,7 @@ export default function BlogPage() {
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="ml-2 p-2 border border-gray-300 rounded dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            className="ml-2 p-2 rounded border border-border bg-muted text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-ring/40"
           >
             <option value="All">All</option>
             {allCategories.map((category) => (
@@ -89,7 +89,7 @@ export default function BlogPage() {
           <select
             value={selectedTag}
             onChange={(e) => setSelectedTag(e.target.value)}
-            className="ml-2 p-2 border border-gray-300 rounded dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            className="ml-2 p-2 rounded border border-border bg-muted text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-ring/40"
           >
             <option value="All">All</option>
             {allTags.map((tag) => (
@@ -104,7 +104,7 @@ export default function BlogPage() {
       {sortedPosts.map((post, index) => (
         <div key={post._id} className="pt-6">
           <article className="grid grid-cols-3 gap-6 items-center py-4">
-            <div className="text-gray-600 dark:text-gray-300 col-span-1">
+            <div className="font-mono text-sm text-muted-foreground col-span-1">
               {new Date(post.date).toLocaleDateString("en-US", {
                 year: "numeric",
                 month: "long",
@@ -112,21 +112,25 @@ export default function BlogPage() {
               })}
             </div>
             <div className="col-span-2">
-              <Link href={post.slug}>
-                <h2 className="text-xl font-bold">{post.title}</h2>
+              <Link href={post.slug} className="group no-underline">
+                <h2 className="font-mono text-xl font-bold transition-colors group-hover:text-accent">
+                  {post.title}
+                </h2>
               </Link>
-              {post.description && <p>{post.description}</p>}
+              {post.description && (
+                <p className="text-muted-foreground">{post.description}</p>
+              )}
               {(post.category || (post.tags && post.tags.length > 0)) && (
-                <div className="mt-2 flex flex-wrap gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <div className="mt-2 flex flex-wrap gap-2 text-sm">
                   {post.category && (
-                    <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800">
+                    <span className="px-2 py-1 rounded border border-accent/30 bg-accent/10 text-accent">
                       {post.category}
                     </span>
                   )}
                   {(post.tags ?? []).map((tag) => (
                     <span
                       key={`${post._id}-${tag}`}
-                      className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800"
+                      className="px-2 py-1 rounded border border-border bg-muted text-muted-foreground"
                     >
                       {tag}
                     </span>
@@ -136,7 +140,7 @@ export default function BlogPage() {
             </div>
           </article>
           {index < sortedPosts.length - 1 && (
-            <hr className="border-t border-gray-300 dark:border-gray-700 my-4" />
+            <hr className="border-t border-border my-4" />
           )}
         </div>
       ))}

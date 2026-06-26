@@ -1,3 +1,4 @@
+/** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
     "./app/**/*.{ts,tsx}",
@@ -7,26 +8,65 @@ module.exports = {
   darkMode: ["class"],
   theme: {
     extend: {
+      colors: {
+        background: "rgb(var(--background) / <alpha-value>)",
+        foreground: "rgb(var(--foreground) / <alpha-value>)",
+        border: "rgb(var(--border) / <alpha-value>)",
+        ring: "rgb(var(--ring) / <alpha-value>)",
+        muted: {
+          DEFAULT: "rgb(var(--muted) / <alpha-value>)",
+          foreground: "rgb(var(--muted-foreground) / <alpha-value>)",
+        },
+        accent: {
+          DEFAULT: "rgb(var(--accent) / <alpha-value>)",
+          foreground: "rgb(var(--accent-foreground) / <alpha-value>)",
+        },
+      },
+      fontFamily: {
+        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: [
+          "var(--font-mono)",
+          "ui-monospace",
+          "SFMono-Regular",
+          "Menlo",
+          "monospace",
+        ],
+      },
       typography: {
         DEFAULT: {
           css: {
-            code: {
-              backgroundColor: '#f5f5f5',  // Light gray for inline code
-              color: '#3a3b3c',  // Dark text color
-              padding: '0.2em 0.4em',
-              borderRadius: '0.3em',
+            maxWidth: "none",
+            "--tw-prose-body": "rgb(var(--foreground))",
+            "--tw-prose-headings": "rgb(var(--foreground))",
+            "--tw-prose-lead": "rgb(var(--muted-foreground))",
+            "--tw-prose-links": "rgb(var(--accent))",
+            "--tw-prose-bold": "rgb(var(--foreground))",
+            "--tw-prose-counters": "rgb(var(--muted-foreground))",
+            "--tw-prose-bullets": "rgb(var(--border))",
+            "--tw-prose-hr": "rgb(var(--border))",
+            "--tw-prose-quotes": "rgb(var(--foreground))",
+            "--tw-prose-quote-borders": "rgb(var(--accent))",
+            "--tw-prose-captions": "rgb(var(--muted-foreground))",
+            "--tw-prose-code": "rgb(var(--foreground))",
+            "--tw-prose-pre-code": "rgb(var(--foreground))",
+            "--tw-prose-pre-bg": "rgb(var(--muted))",
+            "--tw-prose-th-borders": "rgb(var(--border))",
+            "--tw-prose-td-borders": "rgb(var(--border))",
+            "h1, h2, h3, h4": {
+              fontFamily: "var(--font-mono)",
+              letterSpacing: "-0.01em",
             },
-            pre: {
-              backgroundColor: '#f5f5f5',  // Light gray for block code
-              color: '#3a3b3c',  // Dark text color
-              padding: '1rem',
-              borderRadius: '0.5rem',
-              overflowX: 'auto',  // Enable horizontal scrolling for long code lines
+            a: {
+              fontWeight: "500",
+              textDecoration: "none",
             },
-            'pre code': {
-              backgroundColor: 'transparent',  // Removes extra background in block code
-              padding: 0,
+            "a:hover": {
+              textDecoration: "underline",
+              textDecorationColor: "rgb(var(--accent))",
             },
+            // Remove the backtick pseudo-elements the plugin adds to inline code
+            "code::before": { content: '""' },
+            "code::after": { content: '""' },
           },
         },
       },
