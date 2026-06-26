@@ -4,6 +4,7 @@ import { allPosts } from "@/.contentlayer/generated";
 import Link from "next/link";
 import { useState } from "react";
 import { track } from "@vercel/analytics";
+import { SpotlightCard } from "@/components/spotlight-card";
 
 export default function BlogPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -101,49 +102,63 @@ export default function BlogPage() {
         </label>
       </div>
 
-      {sortedPosts.map((post, index) => (
-        <div key={post._id} className="pt-6">
-          <article className="grid grid-cols-3 gap-6 items-center py-4">
-            <div className="font-mono text-sm text-muted-foreground col-span-1">
-              {new Date(post.date).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </div>
-            <div className="col-span-2">
-              <Link href={post.slug} className="group no-underline">
-                <h2 className="font-mono text-xl font-bold transition-colors group-hover:text-accent">
+      <div className="not-prose space-y-5">
+        {sortedPosts.length === 0 && (
+          <p className="font-mono text-sm text-muted-foreground">
+            <span className="text-accent">$</span> no posts matched your query.
+          </p>
+        )}
+
+        {sortedPosts.map((post) => (
+          <SpotlightCard key={post._id}>
+            <Link href={post.slug} className="block no-underline">
+              {/* Window chrome with filename */}
+              <div className="flex items-center gap-1.5 border-b border-border px-4 py-3">
+                <span className="h-2.5 w-2.5 rounded-full bg-red-400/70" />
+                <span className="h-2.5 w-2.5 rounded-full bg-yellow-400/70" />
+                <span className="h-2.5 w-2.5 rounded-full bg-accent/80" />
+                <span className="ml-2 truncate font-mono text-xs text-muted-foreground">
+                  ~{post.slug}.mdx
+                </span>
+              </div>
+
+              <div className="p-5">
+                <div className="mb-2 font-mono text-xs text-muted-foreground">
+                  <span className="text-accent">$</span>{" "}
+                  {new Date(post.date).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </div>
+                <h2 className="font-mono text-xl font-bold text-foreground transition-colors group-hover:text-accent">
                   {post.title}
                 </h2>
-              </Link>
-              {post.description && (
-                <p className="text-muted-foreground">{post.description}</p>
-              )}
-              {(post.category || (post.tags && post.tags.length > 0)) && (
-                <div className="mt-2 flex flex-wrap gap-2 text-sm">
-                  {post.category && (
-                    <span className="px-2 py-1 rounded border border-accent/30 bg-accent/10 text-accent">
-                      {post.category}
-                    </span>
-                  )}
-                  {(post.tags ?? []).map((tag) => (
-                    <span
-                      key={`${post._id}-${tag}`}
-                      className="px-2 py-1 rounded border border-border bg-muted text-muted-foreground"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          </article>
-          {index < sortedPosts.length - 1 && (
-            <hr className="border-t border-border my-4" />
-          )}
-        </div>
-      ))}
+                {post.description && (
+                  <p className="mt-1 text-muted-foreground">{post.description}</p>
+                )}
+                {(post.category || (post.tags && post.tags.length > 0)) && (
+                  <div className="mt-3 flex flex-wrap gap-2 text-sm">
+                    {post.category && (
+                      <span className="rounded border border-accent/30 bg-accent/10 px-2 py-1 text-accent">
+                        {post.category}
+                      </span>
+                    )}
+                    {(post.tags ?? []).map((tag) => (
+                      <span
+                        key={`${post._id}-${tag}`}
+                        className="rounded border border-border bg-muted px-2 py-1 text-muted-foreground"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Link>
+          </SpotlightCard>
+        ))}
+      </div>
     </div>
   );
 }

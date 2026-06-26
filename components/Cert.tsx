@@ -1,5 +1,6 @@
 // components/Cert.tsx
 import Image from "next/image";
+import { Tilt } from "@/components/tilt";
 
 const certifications = [
   {
@@ -86,17 +87,49 @@ const certifications = [
 
 export default function Cert() {
   return (
-    <section className="my-10">
+    <section className="not-prose my-10 grid grid-cols-1 gap-6 sm:grid-cols-2">
       {certifications.map((cert, index) => (
-        <div key={index} className="flex flex-col md:flex-row mb-8 items-center">
-          <div className="md:w-1/2 p-4">
-            <Image src={cert.imageSrc} alt={cert.title} width={300} height={200} className="rounded-lg" />
-          </div>
-          <div className="md:w-1/2 p-4">
-            <h2 className="font-mono text-xl font-bold mb-2">{cert.title}</h2>
-            <p className="text-muted-foreground">{cert.description}</p>
-          </div>
-        </div>
+        <Tilt key={index} max={9} scale={1.03} className="group h-full">
+          <article className="relative flex h-full flex-col overflow-hidden rounded-xl border border-border bg-muted/40 transition-colors duration-300 hover:border-accent/60">
+            {/* Cursor-following glow */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 z-10 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+              style={{
+                background:
+                  "radial-gradient(240px circle at var(--mx, 50%) var(--my, 50%), rgb(var(--accent) / 0.16), transparent 70%)",
+              }}
+            />
+
+            {/* Window chrome */}
+            <div className="flex items-center gap-1.5 border-b border-border px-4 py-3">
+              <span className="h-2.5 w-2.5 rounded-full bg-red-400/70" />
+              <span className="h-2.5 w-2.5 rounded-full bg-yellow-400/70" />
+              <span className="h-2.5 w-2.5 rounded-full bg-accent/80" />
+              <span className="ml-2 truncate font-mono text-xs text-muted-foreground">
+                {cert.description}
+              </span>
+            </div>
+
+            {/* Certificate image — larger, never cropped */}
+            <div className="relative aspect-[3/2] w-full bg-background/60">
+              <Image
+                src={cert.imageSrc}
+                alt={cert.title}
+                fill
+                sizes="(min-width: 640px) 340px, 90vw"
+                className="object-contain p-4 transition-transform duration-300 group-hover:scale-[1.03]"
+              />
+            </div>
+
+            <div className="border-t border-border p-4">
+              <h2 className="font-mono text-base font-bold leading-snug text-foreground transition-colors group-hover:text-accent">
+                {cert.title}
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">{cert.description}</p>
+            </div>
+          </article>
+        </Tilt>
       ))}
     </section>
   );
