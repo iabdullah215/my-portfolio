@@ -2,6 +2,7 @@ import Link from "next/link";
 import "./globals.css";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
+import { BinaryRain } from "@/components/binary-rain";
 import { Nav } from "@/components/nav";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Analytics } from "@/components/analytics";
@@ -28,6 +29,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
     >
       <body className="antialiased min-h-screen bg-background font-sans text-foreground">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+          {/* Global binary-rain background — sits behind everything on every
+              route, never intercepts clicks, persists across navigation */}
+          <BinaryRain className="fixed inset-0 -z-10 opacity-40 pointer-events-none" />
           <div className="max-w-2xl mx-auto py-10 px-4">
             <a
               href="#main-content"

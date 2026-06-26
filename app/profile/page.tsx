@@ -1,14 +1,9 @@
 import Image from "next/image";
-import { BinaryRain } from "@/components/binary-rain";
 import { Tilt } from "@/components/tilt";
 
 const ProfilePage = () => {
   return (
-    <>
-      {/* Full-page binary rain — scoped to the profile route only */}
-      <BinaryRain className="fixed inset-0 -z-10 opacity-60" />
-
-      <section className="not-prose flex min-h-[72vh] flex-col items-center justify-center px-4 text-center">
+    <section className="not-prose flex min-h-[72vh] flex-col items-center justify-center px-4 text-center">
         <Tilt className="mb-8" max={16} scale={1.06}>
           <div className="relative h-44 w-44 overflow-hidden rounded-full ring-2 ring-accent/70 ring-offset-4 ring-offset-background shadow-[0_0_45px_-5px_rgb(var(--accent)/0.55)]">
             <Image
@@ -36,8 +31,7 @@ const ProfilePage = () => {
             <span className="ml-0.5 inline-block w-2 animate-pulse text-accent">_</span>
           </p>
         </div>
-      </section>
-    </>
+    </section>
   );
 };
 
