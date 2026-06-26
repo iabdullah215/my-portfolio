@@ -33,10 +33,11 @@ export function BinaryRain({ className = "" }: BinaryRainProps) {
     let drops: number[] = [];
 
     const resize = () => {
-      const parent = canvas.parentElement;
-      if (!parent) return;
-      width = parent.clientWidth;
-      height = parent.clientHeight;
+      // Measure the canvas's own rendered box so it works whether it's
+      // absolutely filling a section or fixed to the whole viewport.
+      width = canvas.clientWidth;
+      height = canvas.clientHeight;
+      if (!width || !height) return;
       const dpr = window.devicePixelRatio || 1;
       canvas.width = Math.floor(width * dpr);
       canvas.height = Math.floor(height * dpr);

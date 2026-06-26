@@ -3,6 +3,7 @@ import { Metadata } from "next"
 import { allPages } from "contentlayer/generated"
 
 import { Mdx } from "@/components/mdx-components"
+import { TerminalBanner } from "@/components/terminal-banner"
 
 interface PageProps {
   params: {
@@ -51,6 +52,11 @@ export default async function PagePage({ params }: PageProps) {
 
   return (
     <article className="py-6 prose">
+      <TerminalBanner
+        label={`~/${page.slugAsParams}.mdx`}
+        command={`whoami && cat ${page.slugAsParams}.mdx`}
+        subtitle={page.description}
+      />
       <h1>{page.title}</h1>
       {page.description && (
         <p className="text-xl text-muted-foreground">{page.description}</p>

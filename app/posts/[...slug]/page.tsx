@@ -3,6 +3,7 @@ import { allPosts } from "contentlayer/generated"
 
 import { Metadata } from "next"
 import { Mdx } from "@/components/mdx-components"
+import { TerminalBanner } from "@/components/terminal-banner"
 
 interface PostProps {
   params: {
@@ -65,6 +66,10 @@ export default async function PostPage({ params }: PostProps) {
 
   return (
     <article className="py-6 prose">
+      <TerminalBanner
+        label={`~/posts/${post.slugAsParams}.mdx`}
+        command={`cat ${post.slugAsParams}.mdx`}
+      />
       <h1 className="mb-2">{post.title}</h1>
       {post.description && (
         <p className="text-xl mt-0 text-muted-foreground">

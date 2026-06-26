@@ -80,6 +80,52 @@
 }
 
 /*
+ * Terminal-window chrome for code blocks: the rehype-pretty-code fragment
+ * becomes the window (border + header bar), and a header strip with three
+ * traffic-light dots (close / minimize / expand) sits on top. Theme-sensitive.
+ */
+.prose [data-rehype-pretty-code-fragment] {
+  position: relative;
+  margin: 1.5rem 0;
+  padding-top: 2.4rem;
+  border: 1px solid rgb(var(--border));
+  border-radius: 0.65rem;
+  background-color: rgb(var(--muted));
+  overflow: hidden;
+}
+
+/* Header bar */
+.prose [data-rehype-pretty-code-fragment]::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2.4rem;
+  background-color: rgb(var(--background) / 0.35);
+  border-bottom: 1px solid rgb(var(--border));
+}
+
+/* Three window-control dots */
+.prose [data-rehype-pretty-code-fragment]::after {
+  content: "";
+  position: absolute;
+  top: 0.92rem;
+  left: 1rem;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 9999px;
+  background-color: #ff5f56;
+  box-shadow: 1.2rem 0 0 0 #ffbd2e, 2.4rem 0 0 0 rgb(var(--accent));
+}
+
+/* The <pre> inside drops its own frame — the fragment provides it */
+.prose [data-rehype-pretty-code-fragment] pre {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+}
+
+/*
  * rehype-pretty-code (dual theme) renders two <pre> blocks per code fence —
  * one with data-theme="light", one with data-theme="dark", each carrying
  * inline token colors. Show only the one matching the active color scheme.
