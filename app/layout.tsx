@@ -1,8 +1,8 @@
-import Link from "next/link";
 import "./globals.css";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { BinaryRain } from "@/components/binary-rain";
+import { Brand } from "@/components/brand";
 import { Nav } from "@/components/nav";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Analytics } from "@/components/analytics";
@@ -40,12 +40,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
               Skip to content
             </a>
             <header className="mb-10 flex items-center justify-between gap-4">
-              <Link
-                href="/"
-                className="font-mono text-sm font-semibold tracking-tight text-foreground transition-colors hover:text-accent"
-              >
-                hwat<span className="text-accent">.</span>sauce
-              </Link>
+              <Brand />
               <div className="flex items-center gap-5">
                 <Nav />
                 <ModeToggle />
