@@ -142,6 +142,27 @@
   display: block;
 }
 
+/*
+ * Blog images break out of the narrow max-w-2xl (~640px) reading column so
+ * screenshots are large and legible instead of cramped to the text width.
+ * `width: auto` + a generous `max-width` means high-res images grow big while
+ * small/low-res ones stay at native size (no blurry upscaling). The
+ * margin-left/translateX pair re-centers each image on the page, letting it
+ * overflow the column symmetrically. `not-prose` regions (profile avatar,
+ * certificate cards) are excluded so only blog content is affected.
+ */
+.prose img:not(:where([class~="not-prose"] *)) {
+  display: block;
+  width: auto;
+  max-width: min(92vw, 1280px);
+  height: auto;
+  margin-top: 1.75rem;
+  margin-bottom: 1.75rem;
+  margin-left: 50%;
+  transform: translateX(-50%);
+  border-radius: 0.5rem;
+}
+
 /* Each line is a grid row (code has display:grid) */
 [data-line] {
   border-left: 2px solid transparent;
