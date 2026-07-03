@@ -1,6 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { Tilt } from "@/components/tilt";
+import { Typewriter } from "@/components/typewriter";
 
 const socials = [
   {
@@ -30,21 +32,27 @@ const socials = [
   },
 ];
 
+/** Staggered entrance delay for the hero elements */
+const enter = (ms: number) =>
+  ({ "--enter-delay": `${ms}ms` } as CSSProperties);
+
 const ProfilePage = () => {
   return (
     <section className="not-prose flex min-h-[80vh] flex-col items-center justify-center px-4 text-center">
-      <Tilt className="mb-8" max={16} scale={1.06}>
-        <div className="relative h-44 w-44 overflow-hidden rounded-full ring-2 ring-accent/70 ring-offset-4 ring-offset-background shadow-[0_0_45px_-5px_rgb(var(--accent)/0.55)]">
-          <Image
-            src="/static/images/mr.r0b0t.jpg"
-            alt="Hwat Sauce"
-            fill
-            sizes="176px"
-            priority
-            className="object-cover"
-          />
-        </div>
-      </Tilt>
+      <div className="animate-enter mb-8" style={enter(0)}>
+        <Tilt max={16} scale={1.06}>
+          <div className="relative h-44 w-44 overflow-hidden rounded-full ring-2 ring-accent/70 ring-offset-4 ring-offset-background shadow-[0_0_45px_-5px_rgb(var(--accent)/0.55)]">
+            <Image
+              src="/static/images/mr.r0b0t.jpg"
+              alt="Hwat Sauce"
+              fill
+              sizes="176px"
+              priority
+              className="object-cover"
+            />
+          </div>
+        </Tilt>
+      </div>
 
       <div className="relative">
         {/* Soft scrim so text stays legible over the rain */}
@@ -53,18 +61,37 @@ const ProfilePage = () => {
           className="pointer-events-none absolute -inset-x-12 -inset-y-8 -z-10 bg-[radial-gradient(ellipse_at_center,rgb(var(--background)/0.88),transparent_75%)]"
         />
 
-        <h1 className="font-mono text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
+        <h1
+          data-text="Hwat.Sauce"
+          aria-label="Hwat Sauce"
+          className="glitch animate-enter font-mono text-4xl font-bold tracking-tight text-foreground sm:text-5xl"
+          style={enter(80)}
+        >
           Hwat<span className="text-accent">.</span>Sauce
         </h1>
 
-        <p className="mt-3 font-mono text-sm text-muted-foreground sm:text-base">
-          Offensive Security <span className="text-accent">·</span> Red Team{" "}
-          <span className="text-accent">·</span> CTF Player
+        <p
+          className="animate-enter mt-3 font-mono text-sm text-muted-foreground sm:text-base"
+          style={enter(160)}
+        >
+          <span className="text-accent">~$</span> whoami{" "}
+          <Typewriter
+            phrases={[
+              "Offensive Security",
+              "Red Team Operator",
+              "CTF Player",
+              "AppSec Engineer",
+            ]}
+            className="text-foreground"
+          />
         </p>
 
         {/* Availability status pill */}
-        <div className="mt-4 flex justify-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 font-mono text-xs text-accent">
+        <div
+          className="animate-enter mt-4 flex justify-center"
+          style={enter(240)}
+        >
+          <span className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 font-mono text-xs text-accent transition-shadow hover:shadow-[0_0_18px_-4px_rgb(var(--accent)/0.6)]">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
@@ -73,35 +100,43 @@ const ProfilePage = () => {
           </span>
         </div>
 
-        <p className="mt-4 font-mono text-sm text-muted-foreground">
+        <p
+          className="animate-enter mt-4 font-mono text-sm text-muted-foreground"
+          style={enter(320)}
+        >
           <span className="text-accent">&gt;</span> From the shadows, I control.
-          <span className="ml-0.5 inline-block w-2 animate-pulse text-accent">_</span>
         </p>
 
         {/* Primary calls-to-action */}
-        <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+        <div
+          className="animate-enter mt-7 flex flex-wrap items-center justify-center gap-3"
+          style={enter(400)}
+        >
           <Link
             href="/blog"
-            className="rounded-md bg-accent px-4 py-2 font-mono text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
+            className="rounded-md bg-accent px-4 py-2 font-mono text-sm font-medium text-accent-foreground transition-all hover:bg-accent/90 hover:shadow-[0_0_22px_-4px_rgb(var(--accent)/0.65)] active:scale-95"
           >
             Read the Blog →
           </Link>
           <Link
             href="/cert"
-            className="rounded-md border border-border px-4 py-2 font-mono text-sm text-foreground transition-colors hover:border-accent hover:text-accent"
+            className="rounded-md border border-border px-4 py-2 font-mono text-sm text-foreground transition-all hover:border-accent hover:bg-accent/10 hover:text-accent active:scale-95"
           >
             View Certifications →
           </Link>
           <a
             href="mailto:abdullah.MnM@proton.me"
-            className="rounded-md border border-border px-4 py-2 font-mono text-sm text-foreground transition-colors hover:border-accent hover:text-accent"
+            className="rounded-md border border-border px-4 py-2 font-mono text-sm text-foreground transition-all hover:border-accent hover:bg-accent/10 hover:text-accent active:scale-95"
           >
             Contact
           </a>
         </div>
 
         {/* Social links */}
-        <div className="mt-6 flex items-center justify-center gap-5">
+        <div
+          className="animate-enter mt-6 flex items-center justify-center gap-5"
+          style={enter(480)}
+        >
           {socials.map((s) => (
             <a
               key={s.label}
@@ -109,7 +144,8 @@ const ProfilePage = () => {
               target={s.href.startsWith("mailto:") ? undefined : "_blank"}
               rel="noopener noreferrer"
               aria-label={s.label}
-              className="text-muted-foreground transition-colors hover:text-accent"
+              title={s.label}
+              className="text-muted-foreground transition-all duration-200 hover:-translate-y-1 hover:text-accent hover:drop-shadow-[0_0_8px_rgb(var(--accent)/0.7)]"
             >
               <svg
                 viewBox="0 0 24 24"

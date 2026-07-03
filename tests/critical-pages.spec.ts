@@ -25,7 +25,8 @@ test("certifications page loads", async ({ page }) => {
 
 test("first blog post opens", async ({ page }) => {
   await page.goto("/blog");
-  const firstPost = page.getByRole("link", { name: /.+/ }).first();
+  const firstPost = page.locator('a[href^="/posts/"]').first();
   await firstPost.click();
+  await expect(page).toHaveURL(/\/posts\//);
   await expect(page.getByRole("heading").first()).toBeVisible();
 });

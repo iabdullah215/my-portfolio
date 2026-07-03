@@ -16,11 +16,11 @@ export function ModeToggle() {
       type="button"
       aria-label="Toggle color theme"
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      className="flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:border-accent hover:text-accent"
+      className="group flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground transition-all hover:border-accent hover:text-accent hover:shadow-[0_0_12px_-2px_rgb(var(--accent)/0.5)] active:scale-90"
     >
       {/* Render a stable placeholder until mounted to avoid hydration mismatch */}
       {!mounted ? (
-        <span className="h-4 w-4" />
+        <span className="h-4 w-4 transition-transform duration-300 group-hover:rotate-[25deg]" />
       ) : isDark ? (
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -28,7 +28,7 @@ export function ModeToggle() {
           viewBox="0 0 24 24"
           strokeWidth={1.5}
           stroke="currentColor"
-          className="h-4 w-4"
+          className="h-4 w-4 transition-transform duration-300 group-hover:rotate-[25deg]"
         >
           <path
             strokeLinecap="round"
@@ -43,7 +43,7 @@ export function ModeToggle() {
           viewBox="0 0 24 24"
           strokeWidth={1.5}
           stroke="currentColor"
-          className="h-4 w-4"
+          className="h-4 w-4 transition-transform duration-300 group-hover:rotate-[25deg]"
         >
           <path
             strokeLinecap="round"

@@ -14,7 +14,7 @@ export function Nav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex items-center gap-5 font-mono text-sm">
+    <nav className="flex items-center gap-3 font-mono text-sm sm:gap-5">
       {links.map((link) => {
         const isActive =
           link.href === "/"
@@ -25,8 +25,10 @@ export function Nav() {
           <Link
             key={link.label}
             href={link.href}
-            className={`transition-colors hover:text-accent ${
-              isActive ? "text-accent" : "text-muted-foreground"
+            className={`relative py-1 transition-colors hover:text-accent after:absolute after:inset-x-0 after:bottom-0 after:h-px after:origin-left after:bg-accent after:transition-transform after:duration-300 ${
+              isActive
+                ? "text-accent after:scale-x-100"
+                : "text-muted-foreground after:scale-x-0 hover:after:scale-x-100"
             }`}
           >
             {link.label}

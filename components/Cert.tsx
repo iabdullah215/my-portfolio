@@ -1,6 +1,8 @@
 // components/Cert.tsx
 import Image from "next/image";
 import { Tilt } from "@/components/tilt";
+import { Reveal } from "@/components/reveal";
+import { ImageZoom } from "@/components/image-zoom";
 
 const certifications = [
   {
@@ -87,9 +89,16 @@ const certifications = [
 
 export default function Cert() {
   return (
-    <section className="not-prose my-10 grid grid-cols-1 gap-6 sm:grid-cols-2">
+    <section className="not-prose my-10">
+      <p className="mb-6 font-mono text-xs text-muted-foreground">
+        <span className="text-accent">$</span> ls -la ~/certs{" "}
+        <span className="text-accent">→</span> {certifications.length} entries
+      </p>
+
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
       {certifications.map((cert, index) => (
-        <Tilt key={index} max={9} scale={1.03} className="group h-full">
+        <Reveal key={index} delay={Math.min(index % 6, 4) * 70} className="h-full">
+        <Tilt max={9} scale={1.03} className="group h-full">
           <article className="relative flex h-full flex-col overflow-hidden rounded-xl border border-border bg-muted/40 transition-colors duration-300 hover:border-accent/60">
             {/* Cursor-following glow */}
             <div
@@ -111,16 +120,18 @@ export default function Cert() {
               </span>
             </div>
 
-            {/* Certificate image — larger, never cropped */}
-            <div className="relative aspect-[3/2] w-full bg-background/60">
-              <Image
-                src={cert.imageSrc}
-                alt={cert.title}
-                fill
-                sizes="(min-width: 640px) 340px, 90vw"
-                className="object-contain p-4 transition-transform duration-300 group-hover:scale-[1.03]"
-              />
-            </div>
+            {/* Certificate image — larger, never cropped, click to zoom */}
+            <ImageZoom src={cert.imageSrc} alt={cert.title}>
+              <div className="relative aspect-[3/2] w-full bg-background/60">
+                <Image
+                  src={cert.imageSrc}
+                  alt={cert.title}
+                  fill
+                  sizes="(min-width: 640px) 340px, 90vw"
+                  className="object-contain p-4 transition-transform duration-300 group-hover:scale-[1.03]"
+                />
+              </div>
+            </ImageZoom>
 
             <div className="border-t border-border p-4">
               <h2 className="font-mono text-base font-bold leading-snug text-foreground transition-colors group-hover:text-accent">
@@ -130,7 +141,9 @@ export default function Cert() {
             </div>
           </article>
         </Tilt>
+        </Reveal>
       ))}
+      </div>
     </section>
   );
 }
