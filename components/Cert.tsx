@@ -2,7 +2,7 @@
 import Image from "next/image";
 import { Tilt } from "@/components/tilt";
 import { Reveal } from "@/components/reveal";
-import { ImageZoom } from "@/components/image-zoom";
+import { CertZoom } from "@/components/cert-zoom";
 
 const certifications = [
   {
@@ -120,8 +120,8 @@ export default function Cert() {
               </span>
             </div>
 
-            {/* Certificate image — larger, never cropped, click to zoom */}
-            <ImageZoom src={cert.imageSrc} alt={cert.title}>
+            {/* Certificate image — larger, never cropped, click to enlarge */}
+            <CertZoom src={cert.imageSrc} title={cert.title} description={cert.description}>
               <div className="relative aspect-[3/2] w-full bg-background/60">
                 <Image
                   src={cert.imageSrc}
@@ -131,7 +131,7 @@ export default function Cert() {
                   className="object-contain p-4 transition-transform duration-300 group-hover:scale-[1.03]"
                 />
               </div>
-            </ImageZoom>
+            </CertZoom>
 
             <div className="border-t border-border p-4">
               <h2 className="font-mono text-base font-bold leading-snug text-foreground transition-colors group-hover:text-accent">
