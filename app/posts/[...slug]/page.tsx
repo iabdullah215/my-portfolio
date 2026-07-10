@@ -95,7 +95,7 @@ export default async function PostPage({ params }: PostProps) {
     : []
 
   return (
-    <article className="py-6 prose">
+    <article className="py-6 prose mx-auto max-w-[46rem]">
       <ReadingProgress />
       <Toc headings={(post.headings ?? []) as TocHeading[]} />
       <TerminalBanner

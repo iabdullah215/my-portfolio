@@ -95,7 +95,7 @@ export default function Cert() {
         <span className="text-accent">→</span> {certifications.length} entries
       </p>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {certifications.map((cert, index) => (
         <Reveal key={index} delay={Math.min(index % 6, 4) * 70} className="h-full">
         <Tilt max={9} scale={1.03} className="group h-full">

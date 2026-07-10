@@ -50,7 +50,7 @@ export default function BlogPage() {
     }`;
 
   return (
-    <div className="prose">
+    <div>
       <h1 className="font-mono text-3xl font-bold mt-4 mb-2 pt-6">Blogs</h1>
       <p className="text-lg text-muted-foreground mb-6">
         Collection of my thoughts on various topics
@@ -125,17 +125,21 @@ export default function BlogPage() {
         {allPosts.length} posts
       </p>
 
-      <div className="not-prose space-y-5">
-        {sortedPosts.length === 0 && (
-          <p className="font-mono text-sm text-muted-foreground">
-            <span className="text-accent">$</span> no posts matched your query.
-          </p>
-        )}
+      {sortedPosts.length === 0 && (
+        <p className="not-prose font-mono text-sm text-muted-foreground">
+          <span className="text-accent">$</span> no posts matched your query.
+        </p>
+      )}
 
+      <div className="not-prose grid gap-5 sm:grid-cols-2">
         {sortedPosts.map((post, index) => (
-          <Reveal key={post._id} delay={Math.min(index, 4) * 70}>
-            <SpotlightCard>
-              <Link href={post.slug} className="block no-underline">
+          <Reveal
+            key={post._id}
+            delay={Math.min(index, 4) * 70}
+            className="h-full"
+          >
+            <SpotlightCard className="h-full">
+              <Link href={post.slug} className="flex h-full flex-col no-underline">
                 {/* Window chrome with filename */}
                 <div className="flex items-center gap-1.5 border-b border-border px-4 py-3">
                   <span className="h-2.5 w-2.5 rounded-full bg-red-400/70" />

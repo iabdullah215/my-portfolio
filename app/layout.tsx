@@ -87,7 +87,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           {/* Global binary-rain background — sits behind everything on every
               route, never intercepts clicks, persists across navigation */}
           <BinaryRain className="fixed inset-0 -z-10 opacity-40 pointer-events-none" />
-          <div className="max-w-2xl mx-auto py-10 px-4">
+          <div className="max-w-5xl mx-auto py-10 px-4">
             <a
               href="#main-content"
               className="sr-only focus:not-sr-only focus:relative focus:z-50 focus:mb-4 focus:inline-block focus:rounded focus:bg-accent focus:px-3 focus:py-2 focus:text-accent-foreground"
@@ -105,8 +105,10 @@ export default function RootLayout({ children }: RootLayoutProps) {
               </div>
             </header>
 
-            {/* 'prose' applies token-driven typography styling */}
-            <main id="main-content" className="prose">
+            {/* Each route owns its own width/typography: reading pages opt into
+                'prose' with a centered measure, while listing/grid pages fill
+                the wider shell. */}
+            <main id="main-content">
               {children}
             </main>
 

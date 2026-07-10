@@ -60,7 +60,7 @@ export function Toc({ headings }: TocProps) {
   return (
     <nav
       aria-label="Table of contents"
-      className="fixed left-[calc(50%+22rem)] top-32 hidden w-60 xl:block"
+      className="fixed left-[calc(50%+24rem)] top-32 hidden w-60 xl:block"
     >
       <p className="mb-3 font-mono text-xs text-muted-foreground">
         <span className="text-accent">$</span> grep &quot;^#&quot; post.mdx

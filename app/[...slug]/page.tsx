@@ -51,7 +51,7 @@ export default async function PagePage({ params }: PageProps) {
   }
 
   return (
-    <article className="py-6 prose">
+    <article className="py-6 prose mx-auto max-w-[46rem]">
       <TerminalBanner
         label={`~/${page.slugAsParams}.mdx`}
         command={`whoami && cat ${page.slugAsParams}.mdx`}
