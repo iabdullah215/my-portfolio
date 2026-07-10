@@ -1,0 +1,274 @@
+---
+title: "Teaching an LLM to Reason Over BloodHound Instead of Just Querying It"
+description: "BloodHound already holds the answer in the graph — the operator has always been the one reasoning over it. pathhound-mcp is a read-only MCP server that hands that reasoning to the model, grounded in a graph you already collected."
+date: "2026-07-10"
+category: "Security Research"
+tags:
+  - active-directory
+  - bloodhound
+  - mcp
+  - llm
+  - pentesting
+---
+
+## The question everyone asks the graph, and no single query answers
+
+Here's a question I ask on almost every AD engagement, right after ingest finishes:
+
+> *"What's the single highest-leverage thing to fix to break the most paths to Domain Admin?"*
+
+BloodHound has the data to answer it. But there's no one query that hands you the answer. So you do what everyone does — you run a few canned queries and then you *think*.
+
+**Before.** From the curated library I keep around, the workflow is three moves. First, do my footholds even reach DA, and how far?
+
+```cypher
+-- shortest_paths_owned_to_domain_admins
+MATCH (g:Group) WHERE g.objectid ENDS WITH '-512'
+MATCH (o) WHERE o:Tag_Owned OR o.owned = true
+MATCH p = shortestPath((o)-[*1..]->(g))
+RETURN o.name AS start, g.name AS target, length(p) AS hops
+ORDER BY hops
+```
+
+Then, for a principal I control, what can I actually abuse from it?
+
+```cypher
+-- acl_first_degree_outbound  ($principal = e.g. ARYA.STARK@NORTH.SEVENKINGDOMS.LOCAL)
+MATCH (n {name: $principal})-[r:GenericAll|GenericWrite|WriteDacl|WriteOwner|Owns
+        |AddMember|ForceChangePassword|AllExtendedRights|AddKeyCredentialLink|AddSelf]->(t)
+RETURN t.name AS target, labels(t) AS target_labels, type(r) AS edge
+ORDER BY edge, target
+```
+
+Then I flip to the UI, render the paths, and *eyeball* which edge keeps showing up in the middle of everything. That last step — "which edge sits on the most paths" — is the actual analysis, and it lives in my head, not in Cypher.
+
+**After.** One prompt to an MCP-connected model:
+
+```text
+Which edges should we fix first to break the most paths to Tier 0 in the
+sevenkingdoms graph? Give me the top choke points and how to remediate the
+worst one.
+```
+
+And the model calls `find_choke_points`, gets a ranked, structured answer back, then calls `explain_edge` and `remediation_for_path` to turn the worst edge into a report line. The eyeballing step — the one that used to live in my head — is now something the model does over the graph.
+
+That's the whole idea behind `pathhound-mcp`, and it's the part I think is under-explored. Plenty of people wire an LLM up to run Cypher for them. Very few have written about letting the model *reason over the graph* — treat it as a knowledge base to interrogate and draw conclusions from, not just a database to `RETURN` rows from.
+
+## The gap: BloodHound is a query tool; the reasoning was always yours
+
+BloodHound is a query-and-visualization engine over an attack graph. It is very good at that. But the graph doesn't tell you *"fix this one ACE and 31 paths collapse."* It tells you there are edges and nodes. The operator supplies the reasoning: which of these paths matter, which single change has the most leverage, what the defender-facing fix actually is.
+
+For a decade that reasoning has been a human sitting in front of a force-directed layout. The interesting question is: what changes if the model does that part? The graph already *knows* the answer — reachability, blast radius, the choke point. Someone just has to reason it out. `pathhound-mcp` is my attempt to hand that job to an LLM without handing it a loaded gun.
+
+## What I built
+
+`pathhound-mcp` is a read-only [MCP](https://modelcontextprotocol.io) server that reasons over a BloodHound graph **you already collected**. It does not collect. It does not touch a live domain. Collection stays where it belongs — SharpHound or `bloodhound-python`, run separately under your engagement's rules — and this server only connects to the resulting Neo4j graph over Bolt and reads.
+
+The tools are deliberately shaped around the questions I actually ask, not around Cypher primitives:
+
+| Tool | What it answers |
+| --- | --- |
+| `list_domains()` | What domains are in this graph, how big, and which are in scope? |
+| `run_cypher(query, params)` | Run *read-only* Cypher; write/destructive clauses are rejected, rows are capped. |
+| `shortest_paths_to_tier0(start, max_paths)` | Shortest attack paths to Tier 0 — from a principal I name, or from every owned node. |
+| `reachable_from(principal, max_hops)` | Blast radius: if I own this, what becomes reachable, and does it hit Tier 0? |
+| `find_choke_points(top_n)` | The edges on the most distinct shortest paths to Tier 0 — the highest-leverage fixes. |
+| `explain_edge(edge_type)` | Why a BloodHound edge is abusable + a defender remediation, at reference level. |
+| `remediation_for_path(path_id_or_cypher)` | For a given path, the specific change that breaks each hop, phrased for a report. |
+| `engagement_summary()` | Headline counts for the report: principals, owned, high-value, paths to Tier 0, top choke points. |
+
+There are also two resources the model can read directly: `pathhound://engagement-scope` (what the server is pointed at, password masked) and `pathhound://cypher-library` (the curated, load-time-validated read-only query set the `-- ` snippets above come from).
+
+## Walkthrough 1 — the choke-point question, answered
+
+Back to the opening question. The model calls `find_choke_points(top_n=5)`. Under the hood the tool computes shortest paths from a capped set of user origins to every in-scope Tier 0 target, tallies how many distinct paths cross each edge, and returns them ranked. In a lab like GOAD, the structured result looks like:
+
+```json
+{
+  "choke_points": [
+    {
+      "from_name": "SMALL COUNCIL@SEVENKINGDOMS.LOCAL",
+      "from_label": "Group",
+      "edge": "GenericAll",
+      "to_name": "KINGSGUARD@SEVENKINGDOMS.LOCAL",
+      "to_label": "Group",
+      "paths_broken": 31
+    },
+    {
+      "from_name": "JORAH.MORMONT@ESSOS.LOCAL",
+      "from_label": "User",
+      "edge": "AddKeyCredentialLink",
+      "to_name": "DAENERYS.TARGARYEN@ESSOS.LOCAL",
+      "to_label": "User",
+      "paths_broken": 12
+    }
+  ],
+  "source_set": "300 User node(s) (capped for cost)",
+  "sources_truncated": true
+}
+```
+
+Now the model has something to reason with, not just render. It sees a single `GenericAll` ACE from `SMALL COUNCIL` onto `KINGSGUARD` sitting on 31 distinct paths, and it flips straight to the fix. `explain_edge("GenericAll")` returns the *why* and the remediation — "Remove the ACE granting GenericAll to non-Tier 0 principals" — and `remediation_for_path` turns a specific path into report-ready steps:
+
+```json
+{
+  "path_length": 3,
+  "start": "ARYA.STARK@NORTH.SEVENKINGDOMS.LOCAL",
+  "target": "DOMAIN ADMINS@SEVENKINGDOMS.LOCAL",
+  "steps": [
+    {
+      "edge": "GenericAll",
+      "from_name": "SMALL COUNCIL@SEVENKINGDOMS.LOCAL",
+      "to_name": "KINGSGUARD@SEVENKINGDOMS.LOCAL",
+      "recommendation": "Break the GenericAll edge from SMALL COUNCIL to KINGSGUARD: Remove the ACE granting GenericAll to non-Tier 0 principals; review who has full control over sensitive objects.",
+      "technique": "Full-control ACL abuse"
+    }
+  ],
+  "summary": "This attack path has 3 hop(s) ... It is broken by remediating ANY single edge below, so prioritize the lowest-effort change (often an unnecessary ACE) or the hop closest to the Tier 0 target."
+}
+```
+
+That's the remediation flip: *remove this one ACE, break N paths.* It's the sentence I want in the report, and it's the sentence the graph could never say on its own.
+
+## Walkthrough 2 — "if I own this account, what becomes reachable?"
+
+The other question I ask constantly. Instead of `MATCH`-ing and squinting, the model calls `reachable_from("ARYA.STARK@NORTH.SEVENKINGDOMS.LOCAL", max_hops=6)` and gets a blast radius summarized by type, with Tier 0 called out:
+
+```json
+{
+  "principal": "ARYA.STARK@NORTH.SEVENKINGDOMS.LOCAL",
+  "max_hops": 6,
+  "total_reachable": 148,
+  "by_type": [
+    { "type": "User", "count": 74 },
+    { "type": "Group", "count": 39 },
+    { "type": "Computer", "count": 28 },
+    { "type": "GPO", "count": 5 },
+    { "type": "Domain", "count": 2 }
+  ],
+  "reaches_tier0": true,
+  "tier0_targets": [
+    "DOMAIN ADMINS@NORTH.SEVENKINGDOMS.LOCAL",
+    "WINTERFELL.NORTH.SEVENKINGDOMS.LOCAL"
+  ],
+  "truncated": false
+}
+```
+
+Note what the model *doesn't* get: a list of exploit commands. It gets structure — 148 reachable objects, Tier 0 in range — and reasons about priority from there.
+
+## Under the hood (briefly)
+
+There's no magic. The server connects to Neo4j over Bolt and runs everything in read transactions. The path tools generate Cypher from a fixed, auditable attack-edge set — no blind `[*]` traversal. For example, `shortest_paths_to_tier0` from owned principals expands to roughly:
+
+```cypher
+MATCH (s) WHERE (s:Tag_Owned OR s.owned = true)
+MATCH (t) WHERE (t:Tag_Tier_Zero OR t.highvalue = true
+      OR (t.system_tags IS NOT NULL AND t.system_tags CONTAINS 'admin_tier_0'))
+  AND coalesce(t.domain, t.name) IN $allowed AND t <> s
+MATCH p = shortestPath((s)-[:MemberOf|AdminTo|HasSession|GenericAll|GenericWrite
+      |WriteDacl|WriteOwner|Owns|ForceChangePassword|AddMember|AddSelf
+      |AllExtendedRights|AddKeyCredentialLink|DCSync|GetChanges|GetChangesAll
+      |AllowedToDelegate|AllowedToAct|AddAllowedToAct|ReadLAPSPassword
+      |ReadGMSAPassword|CanRDP|CanPSRemote|ExecuteDCOM|SQLAdmin|HasSIDHistory
+      |WriteSPN|WriteAccountRestrictions|Contains|GPLink*1..8]->(t))
+RETURN p ORDER BY length(p) LIMIT 10
+```
+
+The Tier 0 / owned predicates cover both newer BloodHound CE (`Tag_Tier_Zero` / `Tag_Owned` labels) and legacy `highvalue` / `owned` properties, so the reasoning survives schema drift. Then every Neo4j path is flattened into ordered, JSON-safe segments the model can actually reason over — this is the bit that turns a graph traversal into a structure an LLM can consume:
+
+```python
+segments = [
+    {"start": _node_repr(nodes[i]), "edge": rel.type, "end": _node_repr(nodes[i + 1])}
+    for i, rel in enumerate(rels)
+]
+paths.append({
+    "length": len(rels),
+    "start": _node_repr(nodes[0])["name"] if nodes else None,
+    "target": _node_repr(nodes[-1])["name"] if nodes else None,
+    "segments": segments,
+})
+```
+
+## Guardrails, as a design decision — not an afterthought
+
+Handing reasoning to a model over an attack graph is exactly the kind of thing that gets you a very bad day if you're careless, so the safety model came first.
+
+- **Reasons over collected data, never a live domain.** The *only* thing this server connects to is a Neo4j instance that already holds a collected graph. There is no code path to a DC, LDAP, SMB, or any external binary. That's the whole boundary.
+- **Read-only by default.** `run_cypher` runs a query through a guardrail *before* any DB access. It strips comments and string literals first, then classifies. Some things are refused no matter what:
+
+```python
+_NEVER_KEYWORDS = [  # destructive or boundary-crossing — refused even with allow_writes
+    ("DELETE", ...), ("DROP", ...), ("LOAD CSV", ...),
+]  # plus apoc.load/import/export/cypher, apoc.periodic/trigger, dbms.* admin
+```
+
+  Write clauses (`CREATE`, `SET`, `MERGE`, `REMOVE`, `FOREACH`, `CALL … IN TRANSACTIONS`) are rejected unless you explicitly set `allow_writes: true` — and even then, `DELETE`/`DROP` stay forbidden.
+- **Scope required at startup.** The server refuses to run without a `scope.yaml` naming an engagement, an authorization reference, and a non-empty `allowed_domains`. Any tool touching a domain or principal checks scope first and refuses anything outside it.
+- **Append-only audit log.** Every tool call writes one JSON line — timestamp, tool, arguments, a short result summary — to `audit/<engagement_id>.jsonl`. Tools are wrapped so they can't run *without* logging.
+
+The two write tools that do exist — `mark_owned` and `set_high_value` — only ever set BloodHound's own owned/Tier 0 markers, require `allow_writes: true`, a `confirm=true`, and in-scope targets, and aren't even registered otherwise. A read-only deployment never advertises write capability at all.
+
+## Honest limitations
+
+The obvious one: **an LLM can hallucinate a path.** And a made-up attack path is worse than none — it sends you remediating something that doesn't exist, or worse, tells a client they're safe when they aren't. That risk is exactly why the design is what it is. The model doesn't invent paths; it calls tools that run real, bounded Cypher against a real graph and return structured facts. Read-only means the worst a confused model can do is ask a bad question, not change your graph. And it's validated against a known-answer lab graph so I can tell when a tool's output drifts from ground truth.
+
+This speeds up analysis. It does not replace the operator, and it absolutely does not replace authorization. The `authorization_ref` in the scope file is recorded, not verified — the paper trail is on you. Treat the audit log and the collected graph as engagement-sensitive artifacts; both are gitignored for a reason.
+
+## Running it yourself
+
+Collection happens separately; point this at the resulting Neo4j.
+
+```bash
+# 1. Install
+python -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt && pip install -e .
+
+# 2. Define the engagement scope (server refuses to start without it)
+cp scope.example.yaml scope.yaml
+#    edit scope.yaml: engagement_id, authorization_ref, allowed_domains (non-empty)
+
+# 3. Point it at BloodHound's Neo4j (credentials come from the environment)
+export NEO4J_URI="bolt://127.0.0.1:7687"
+export NEO4J_USER="neo4j"
+export NEO4J_PASSWORD="<your-neo4j-password>"
+
+# 4. Run as a stdio MCP server
+pathhound-mcp          # or:  python -m pathhound_mcp.server
+```
+
+Then register it with your MCP client (Claude Desktop shown; use the absolute path to the console script in your venv):
+
+```json
+{
+  "mcpServers": {
+    "pathhound": {
+      "command": "/path/to/pathhound-mcp/.venv/bin/pathhound-mcp",
+      "env": {
+        "NEO4J_URI": "bolt://127.0.0.1:7687",
+        "NEO4J_USER": "neo4j",
+        "NEO4J_PASSWORD": "<your-neo4j-password>",
+        "PATHHOUND_SCOPE": "/path/to/pathhound-mcp/scope.yaml"
+      }
+    }
+  }
+}
+```
+
+Now you can ask, in plain language, the questions you used to answer with three queries and a stare at the force-directed layout.
+
+## What this changes
+
+The graph always held the answer. What changed is *who does the reasoning over it.* Moving that from my head into a tool the model can drive doesn't make me a better pentester — it makes the boring part fast and the report-writing part almost automatic, while the guardrails keep the model from doing anything I didn't authorize. That's the trade I wanted: hand over the reasoning, keep the boundary.
+
+It's an early, under-explored idea, and this is one honest cut at it. Code, the full tool list, and the safety model are here:
+
+**→ [github.com/iabdullah215/pathhound-mcp](https://github.com/iabdullah215/pathhound-mcp)**
+
+*Authorized penetration-testing use only. This server reads and reasons over an already-collected graph; it never touches a live domain.*
+
+Stay in the loop with my latest content – follow me on [Medium](https://medium.com/@iabdullah_215) for more!
+
+## THANKS
+
+## MUHAMMAD ABDULLAH
