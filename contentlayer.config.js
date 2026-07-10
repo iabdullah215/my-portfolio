@@ -1,5 +1,6 @@
 import { defineDocumentType, makeSource } from "contentlayer2/source-files"
 import rehypePrettyCode from "rehype-pretty-code"
+import remarkGfm from "remark-gfm"
 
 /** @type {import('rehype-pretty-code').Options} */
 const prettyCodeOptions = {
@@ -175,6 +176,8 @@ export default makeSource({
   contentDirPath: "./content",
   documentTypes: [Post, Page],
   mdx: {
+    // remark-gfm enables GitHub-flavored Markdown (tables, strikethrough, etc.)
+    remarkPlugins: [remarkGfm],
     rehypePlugins: [rehypeHeadingAnchors, [rehypePrettyCode, prettyCodeOptions]],
   },
 })
