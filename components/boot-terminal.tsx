@@ -26,6 +26,28 @@ const SERVER_URL = "https://iabdullah.vercel.app";
 const useIsoLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
+// Braille spinner frames for the "build" steps.
+const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
+// localStorage can throw (Safari private mode, storage disabled). Never let that
+// crash the pre-paint effect: on a read error assume "not seen" (show the intro
+// once), and swallow write errors so the sequence still finishes cleanly.
+function hasSeenBoot(): boolean {
+  try {
+    return localStorage.getItem(STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markBootSeen(): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, "1");
+  } catch {
+    /* storage unavailable — the intro simply replays next load */
+  }
+}
+
 function Prompt({ path }: { path: string }) {
   return (
     <>
@@ -45,15 +67,16 @@ export function BootTerminal() {
     null
   );
   const [started, setStarted] = useState(false);
+  // A single in-progress "build" line (spinner) rendered below the log.
+  const [status, setStatus] = useState<ReactNode | null>(null);
 
   useIsoLayoutEffect(() => {
     const reduced = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches;
-    const seen = localStorage.getItem(STORAGE_KEY);
 
     // Hide before paint for anyone who shouldn't watch the intro.
-    if (reduced || seen) {
+    if (reduced || hasSeenBoot()) {
       setShow(false);
       return;
     }
@@ -64,6 +87,7 @@ export function BootTerminal() {
     // sequence, `closed` de-dupes the power-off.
     let disposed = false;
     let closed = false;
+    let safety = 0;
     document.documentElement.style.overflow = "hidden";
     setStarted(true);
     // Show the prompt immediately so the first frame isn't a blank screen.
@@ -76,6 +100,29 @@ export function BootTerminal() {
 
     const push = (node: ReactNode) =>
       setLines((prev) => [...prev, <Line key={prev.length}>{node}</Line>]);
+
+    // Animate a spinner beside `working` for `ms`, then commit a permanent
+    // "✓ done" line. Mimics a real build step compiling.
+    const step = async (working: string, done: ReactNode, ms: number) => {
+      const start = Date.now();
+      let frame = 0;
+      while (Date.now() - start < ms) {
+        if (stop()) {
+          setStatus(null);
+          return;
+        }
+        const f = SPINNER[frame++ % SPINNER.length];
+        setStatus(<span className="text-amber-400">{`${f} ${working}`}</span>);
+        await sleep(80);
+      }
+      setStatus(null);
+      if (stop()) return;
+      push(
+        <span>
+          <span className="text-emerald-400">✓</span> {done}
+        </span>
+      );
+    };
 
     const typeCommand = async (path: string, text: string) => {
       setTyping({ path, text: "" });
@@ -133,18 +180,17 @@ export function BootTerminal() {
         <span className="font-bold text-emerald-400">▲ Next.js 14.2.35</span>
       );
       await sleep(450);
-      push(
-        <span className="text-amber-400">⚡ Loading dependencies...</span>
+      await step("Loading dependencies…", "Dependencies loaded", 1100);
+      await step("Setting things up…", "Environment ready", 950);
+      await step(
+        "Compiling /profile …",
+        <>
+          Compiled <span className="text-zinc-400">/profile</span> in{" "}
+          <span className="text-zinc-400">1.2s</span>
+        </>,
+        1000
       );
-      await sleep(950);
-      push(<span className="text-amber-400">⚙ Setting things up...</span>);
-      await sleep(950);
-      push(
-        <span>
-          <span className="text-emerald-400">✓</span> Compiled successfully
-        </span>
-      );
-      await sleep(550);
+      await sleep(450);
       push(
         <span>
           <span className="text-emerald-400">✓</span> Ready — server running on{" "}
@@ -160,8 +206,10 @@ export function BootTerminal() {
       if (closed) return;
       closed = true;
       disposed = true;
-      localStorage.setItem(STORAGE_KEY, "1");
+      window.clearTimeout(safety);
+      markBootSeen();
       setTyping(null);
+      setStatus(null);
       setClosing(true);
       // Matches the crt-off animation duration in globals.css.
       window.setTimeout(() => {
@@ -175,10 +223,15 @@ export function BootTerminal() {
     window.addEventListener("keydown", skip);
     window.addEventListener("click", skip);
 
+    // Safety net: never trap a visitor on the overlay if a timer or state
+    // update stalls — force the power-off well after the scripted duration.
+    safety = window.setTimeout(close, 12000);
+
     run();
 
     return () => {
       disposed = true;
+      window.clearTimeout(safety);
       document.documentElement.style.overflow = "";
       window.removeEventListener("keydown", skip);
       window.removeEventListener("click", skip);
@@ -199,6 +252,7 @@ export function BootTerminal() {
       <div className="crt-scanlines pointer-events-none absolute inset-0" />
       <div className="relative flex-1 overflow-hidden px-4 py-5 sm:px-8 sm:py-8">
         {lines}
+        {status ? <Line>{status}</Line> : null}
         {typing ? (
           <Line>
             <Prompt path={typing.path} />
