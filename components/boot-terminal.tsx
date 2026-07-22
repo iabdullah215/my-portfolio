@@ -256,15 +256,16 @@ export function BootTerminal() {
 
   return (
     <div
-      className={`fixed inset-0 z-[100] flex items-center justify-center bg-[#050506] p-4 transition-opacity duration-700 ${
+      className={`fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-xl transition-opacity duration-700 ${
         closing ? "opacity-0" : "opacity-100"
       }`}
       role="presentation"
       aria-hidden="true"
     >
-      {/* Terminal window */}
+      {/* Terminal window — slightly translucent so the blurred backdrop shows
+          through for a frosted-glass look */}
       <div
-        className={`boot-window group relative flex w-[94vw] max-w-2xl flex-col overflow-hidden rounded-xl border border-zinc-700/70 bg-[#0a0a0b] font-mono text-[13px] leading-relaxed text-zinc-200 shadow-2xl shadow-black/60 ring-1 ring-black/40 sm:text-sm ${
+        className={`boot-window group relative flex w-[94vw] max-w-2xl flex-col overflow-hidden rounded-xl border border-zinc-600/60 bg-[#0a0a0b]/80 font-mono text-[13px] leading-relaxed text-zinc-200 shadow-2xl shadow-black/60 ring-1 ring-white/5 sm:text-sm ${
           closing ? "boot-off" : ""
         }`}
       >
