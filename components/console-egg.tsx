@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { STORAGE_KEY } from "./boot-terminal";
 
 let printed = false;
 
@@ -33,6 +34,24 @@ export function ConsoleEgg() {
     );
     console.log(
       "%cSnooping around the console? Good instinct. Tip: press Ctrl+K (or `) for the terminal.\n→ github.com/iabdullah215 · muhammadabdullah8040@gmail.com",
+      "color: #a1a1aa; font-family: monospace;"
+    );
+
+    // Reboot Easter egg: replay the boot intro by clearing the session flag
+    // and reloading. Exposed globally so `reboot()` works from the console.
+    (window as unknown as { reboot?: () => void }).reboot = () => {
+      try {
+        sessionStorage.removeItem(STORAGE_KEY);
+      } catch {
+        /* storage unavailable — reload still re-triggers a fresh session */
+      }
+      location.reload();
+    };
+
+    console.log(
+      "%cType %creboot()%c to replay the boot sequence.",
+      "color: #a1a1aa; font-family: monospace;",
+      "color: #34d399; font-family: monospace; font-weight: bold;",
       "color: #a1a1aa; font-family: monospace;"
     );
   }, []);

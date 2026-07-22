@@ -17,7 +17,7 @@ import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
  * it shouldn't run.
  */
 
-const STORAGE_KEY = "hwat-boot-shown";
+export const STORAGE_KEY = "hwat-boot-shown";
 const HOME_PATH = "~";
 const PROJECT_PATH = "~/hwat-portfolio";
 const SERVER_URL = "https://iabdullah.vercel.app";
@@ -132,9 +132,9 @@ export function BootTerminal() {
       for (let i = 1; i <= text.length; i++) {
         if (stop()) return;
         setTyping({ path, text: text.slice(0, i) });
-        await sleep(38 + Math.random() * 55);
+        await sleep(20 + Math.random() * 28);
       }
-      await sleep(260);
+      await sleep(130);
       if (stop()) return;
       push(
         <>
@@ -146,11 +146,21 @@ export function BootTerminal() {
     };
 
     const run = async () => {
-      await sleep(600);
+      // Yield first so StrictMode's dev double-invoke disposes the stale run
+      // before any output — otherwise the login banner gets pushed twice.
+      await sleep(80);
       if (stop()) return;
 
+      // Shell-style login banner with the live local date/time.
+      const now = new Date();
+      const stamp = `${now.toDateString()} ${now.toTimeString().slice(0, 8)}`;
+      push(
+        <span className="text-zinc-500">{`Last login: ${stamp} on ttys001`}</span>
+      );
+      await sleep(240);
+
       await typeCommand(HOME_PATH, "ls");
-      await sleep(220);
+      await sleep(130);
       push(
         <span>
           <span className="text-sky-400">Desktop</span>
@@ -168,39 +178,39 @@ export function BootTerminal() {
           <span className="font-bold text-emerald-400">hwat-portfolio</span>
         </span>
       );
-      await sleep(650);
+      await sleep(320);
 
       await typeCommand(HOME_PATH, "cd hwat-portfolio");
-      await sleep(400);
+      await sleep(200);
 
       await typeCommand(PROJECT_PATH, "npm run dev");
-      await sleep(550);
+      await sleep(260);
       push(<span className="text-zinc-500">&gt; hwat-portfolio@0.1.0 dev</span>);
       push(<span className="text-zinc-500">&gt; next dev</span>);
-      await sleep(500);
+      await sleep(260);
       push(<span>&nbsp;</span>);
       push(
         <span className="font-bold text-emerald-400">▲ Next.js 14.2.35</span>
       );
-      await sleep(450);
-      await step("Loading dependencies…", "Dependencies loaded", 1100);
-      await step("Setting things up…", "Environment ready", 950);
+      await sleep(200);
+      await step("Loading dependencies…", "Dependencies loaded", 550);
+      await step("Setting things up…", "Environment ready", 450);
       await step(
         "Compiling /profile …",
         <>
           Compiled <span className="text-zinc-400">/profile</span> in{" "}
           <span className="text-zinc-400">1.2s</span>
         </>,
-        1000
+        500
       );
-      await sleep(450);
+      await sleep(180);
       push(
         <span>
           <span className="text-emerald-400">✓</span> Ready — server running on{" "}
           <span className="text-cyan-400 underline">{SERVER_URL}</span>
         </span>
       );
-      await sleep(1150);
+      await sleep(650);
       if (stop()) return;
       close();
     };
@@ -228,7 +238,7 @@ export function BootTerminal() {
 
     // Safety net: never trap a visitor on the overlay if a timer or state
     // update stalls — force the power-off well after the scripted duration.
-    safety = window.setTimeout(close, 12000);
+    safety = window.setTimeout(close, 8000);
 
     run();
 

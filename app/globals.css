@@ -399,6 +399,38 @@ code[data-line-numbers] > [data-line]::before {
 
 /* ==================== Boot terminal intro ==================== */
 
+/*
+ * Phosphor glow on all terminal text + a quick CRT "power on" flash when the
+ * overlay first mounts (mirrors the .boot-off power-off). transform-origin is
+ * shared with .boot-off so both animations pivot from the screen's center.
+ */
+.boot-overlay {
+  text-shadow: 0 0 4px rgb(52 211 153 / 0.22);
+  transform-origin: center;
+  animation: crt-on 0.55s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@keyframes crt-on {
+  0% {
+    transform: scaleX(1.15) scaleY(0.004);
+    opacity: 0.9;
+    filter: brightness(3);
+  }
+  40% {
+    transform: scaleX(1) scaleY(0.02);
+    opacity: 1;
+    filter: brightness(2.2);
+  }
+  70% {
+    transform: scaleX(1) scaleY(1);
+    filter: brightness(1.5);
+  }
+  100% {
+    transform: scaleX(1) scaleY(1);
+    filter: brightness(1);
+  }
+}
+
 /* Steady block cursor for the fake terminal prompt */
 .term-cursor {
   display: inline-block;
@@ -464,6 +496,11 @@ code[data-line-numbers] > [data-line]::before {
   }
 
   .typewriter-caret {
+    animation: none;
+  }
+
+  .boot-overlay,
+  .boot-off {
     animation: none;
   }
 
