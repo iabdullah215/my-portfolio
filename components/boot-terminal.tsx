@@ -8,10 +8,11 @@ import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
  * server reports ready it powers off with a CRT-style collapse, revealing the
  * real portfolio underneath.
  *
- * Plays only on a visitor's first ever visit (persisted in localStorage, so it
- * never replays on refresh, in new tabs, or on return visits), is skippable
- * (any key / click), and is skipped entirely for prefers-reduced-motion. The
- * overlay is present in the SSR HTML so returning/reduced-motion visitors never
+ * Plays on every fresh open of the site (new tab / new browser session) but NOT
+ * on refresh: the "seen" flag lives in sessionStorage, which survives reloads
+ * within the same tab yet resets when the tab/session ends. Skippable (any key /
+ * click) and skipped entirely for prefers-reduced-motion. The overlay is present
+ * in the SSR HTML so returning-within-session / reduced-motion visitors never
  * see a content flash — a layout effect hides it before the browser paints when
  * it shouldn't run.
  */
@@ -29,12 +30,14 @@ const useIsoLayoutEffect =
 // Braille spinner frames for the "build" steps.
 const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
-// localStorage can throw (Safari private mode, storage disabled). Never let that
-// crash the pre-paint effect: on a read error assume "not seen" (show the intro
-// once), and swallow write errors so the sequence still finishes cleanly.
+// sessionStorage keeps the "seen" flag for the tab's session (survives refresh,
+// resets on a new tab/session) — so the intro plays on every fresh open but not
+// on reload. Access can throw (Safari private mode, storage disabled); never let
+// that crash the pre-paint effect: on a read error assume "not seen" (show it),
+// and swallow write errors so the sequence still finishes cleanly.
 function hasSeenBoot(): boolean {
   try {
-    return localStorage.getItem(STORAGE_KEY) === "1";
+    return sessionStorage.getItem(STORAGE_KEY) === "1";
   } catch {
     return false;
   }
@@ -42,7 +45,7 @@ function hasSeenBoot(): boolean {
 
 function markBootSeen(): void {
   try {
-    localStorage.setItem(STORAGE_KEY, "1");
+    sessionStorage.setItem(STORAGE_KEY, "1");
   } catch {
     /* storage unavailable — the intro simply replays next load */
   }
