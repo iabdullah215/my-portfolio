@@ -27,7 +27,7 @@ const socials = [
   },
   {
     label: "Email",
-    href: "mailto:abdullah.MnM@proton.me",
+    href: "mailto:muhammadabdullah8040@gmail.com",
     path: "M1.5 8.67v8.58a3 3 0 003 3h15a3 3 0 003-3V8.67l-8.928 5.493a3 3 0 01-3.144 0L1.5 8.67zM22.5 6.908V6.75a3 3 0 00-3-3h-15a3 3 0 00-3 3v.158l9.714 5.978a1.5 1.5 0 001.572 0L22.5 6.908z",
   },
 ];
@@ -125,7 +125,7 @@ const ProfilePage = () => {
             View Certifications →
           </Link>
           <a
-            href="mailto:abdullah.MnM@proton.me"
+            href="mailto:muhammadabdullah8040@gmail.com"
             className="rounded-md border border-border px-4 py-2 font-mono text-sm text-foreground transition-all hover:border-accent hover:bg-accent/10 hover:text-accent active:scale-95"
           >
             Contact

@@ -32,7 +32,7 @@ export function ConsoleEgg() {
       "color: inherit; font-family: monospace;"
     );
     console.log(
-      "%cSnooping around the console? Good instinct. Tip: press Ctrl+K (or `) for the terminal.\n→ github.com/iabdullah215 · abdullah.MnM@proton.me",
+      "%cSnooping around the console? Good instinct. Tip: press Ctrl+K (or `) for the terminal.\n→ github.com/iabdullah215 · muhammadabdullah8040@gmail.com",
       "color: #a1a1aa; font-family: monospace;"
     );
   }, []);

@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
+import { BootTerminal } from "@/components/boot-terminal";
 import { BinaryRain } from "@/components/binary-rain";
 import { Brand } from "@/components/brand";
 import { Nav } from "@/components/nav";
@@ -84,6 +85,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
     >
       <body className="antialiased min-h-screen bg-background font-sans text-foreground">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+          {/* Fake terminal boot intro — plays once per session, then powers
+              off with a CRT collapse to reveal the site underneath */}
+          <BootTerminal />
           {/* Global binary-rain background — sits behind everything on every
               route, never intercepts clicks, persists across navigation */}
           <BinaryRain className="fixed inset-0 -z-10 opacity-40 pointer-events-none" />

@@ -397,6 +397,61 @@ code[data-line-numbers] > [data-line]::before {
   }
 }
 
+/* ==================== Boot terminal intro ==================== */
+
+/* Steady block cursor for the fake terminal prompt */
+.term-cursor {
+  display: inline-block;
+  width: 0.55em;
+  height: 1.05em;
+  margin-left: 0.05em;
+  vertical-align: text-bottom;
+  background-color: #34d399;
+  animation: caret-blink 1s steps(2, start) infinite;
+}
+
+/* Faint CRT scanlines + vignette over the boot screen */
+.crt-scanlines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.04) 0px,
+    rgba(255, 255, 255, 0.04) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  box-shadow: inset 0 0 180px 40px rgba(0, 0, 0, 0.75);
+  opacity: 0.6;
+}
+
+/* Monitor "power off": flash, collapse to a horizontal line, then a point */
+.boot-off {
+  animation: crt-off 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  transform-origin: center;
+}
+
+@keyframes crt-off {
+  0% {
+    transform: scaleX(1) scaleY(1);
+    opacity: 1;
+    filter: brightness(1);
+  }
+  45% {
+    transform: scaleX(1) scaleY(1);
+    opacity: 1;
+    filter: brightness(1.6);
+  }
+  70% {
+    transform: scaleX(1) scaleY(0.006);
+    opacity: 1;
+    filter: brightness(2.4);
+  }
+  100% {
+    transform: scaleX(0) scaleY(0.006);
+    opacity: 0;
+    filter: brightness(3);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-enter {
     animation: none;
