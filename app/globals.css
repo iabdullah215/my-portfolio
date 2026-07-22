@@ -401,10 +401,10 @@ code[data-line-numbers] > [data-line]::before {
 
 /*
  * Phosphor glow on all terminal text + a quick CRT "power on" flash when the
- * overlay first mounts (mirrors the .boot-off power-off). transform-origin is
- * shared with .boot-off so both animations pivot from the screen's center.
+ * window first mounts (mirrors the .boot-off power-off). transform-origin is
+ * shared with .boot-off so both animations pivot from the window's center.
  */
-.boot-overlay {
+.boot-window {
   text-shadow: 0 0 4px rgb(52 211 153 / 0.22);
   transform-origin: center;
   animation: crt-on 0.55s cubic-bezier(0.16, 1, 0.3, 1) backwards;
@@ -499,7 +499,7 @@ code[data-line-numbers] > [data-line]::before {
     animation: none;
   }
 
-  .boot-overlay,
+  .boot-window,
   .boot-off {
     animation: none;
   }

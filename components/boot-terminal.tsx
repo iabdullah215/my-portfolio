@@ -256,33 +256,68 @@ export function BootTerminal() {
 
   return (
     <div
-      className={`boot-overlay fixed inset-0 z-[100] flex flex-col bg-[#0a0a0b] font-mono text-[13px] leading-relaxed text-zinc-200 sm:text-sm ${
-        closing ? "boot-off" : ""
+      className={`fixed inset-0 z-[100] flex items-center justify-center bg-[#050506] p-4 transition-opacity duration-700 ${
+        closing ? "opacity-0" : "opacity-100"
       }`}
       role="presentation"
       aria-hidden="true"
     >
-      <div className="crt-scanlines pointer-events-none absolute inset-0" />
-      <div className="relative flex-1 overflow-hidden px-4 py-5 sm:px-8 sm:py-8">
-        {lines}
-        {status ? <Line>{status}</Line> : null}
-        {typing ? (
-          <Line>
-            <Prompt path={typing.path} />
-            {typing.text}
-            <span className="term-cursor" />
-          </Line>
-        ) : !started ? (
-          <Line>
-            <Prompt path={HOME_PATH} />
-            <span className="term-cursor" />
-          </Line>
-        ) : null}
-      </div>
-      <div className="pointer-events-none absolute bottom-4 right-5 font-mono text-[11px] text-zinc-600">
-        press any key to skip
+      {/* Terminal window */}
+      <div
+        className={`boot-window group relative flex w-[94vw] max-w-2xl flex-col overflow-hidden rounded-xl border border-zinc-700/70 bg-[#0a0a0b] font-mono text-[13px] leading-relaxed text-zinc-200 shadow-2xl shadow-black/60 ring-1 ring-black/40 sm:text-sm ${
+          closing ? "boot-off" : ""
+        }`}
+      >
+        {/* Title bar with macOS-style traffic-light controls */}
+        <div className="relative flex items-center gap-2 border-b border-zinc-700/70 bg-zinc-900/70 px-4 py-2.5">
+          <WindowDot color="bg-red-400/80" glyph="✕" />
+          <WindowDot color="bg-yellow-400/80" glyph="–" />
+          <WindowDot color="bg-emerald-400/80" glyph="+" />
+          <span className="pointer-events-none absolute inset-x-0 truncate px-24 text-center font-mono text-xs text-zinc-500">
+            hwatsauce@MNM: ~/hwat-portfolio — zsh
+          </span>
+        </div>
+
+        {/* Terminal body */}
+        <div className="relative h-[58vh] max-h-[440px] min-h-[280px] overflow-hidden px-4 py-4 sm:px-6 sm:py-5">
+          <div className="crt-scanlines pointer-events-none absolute inset-0" />
+          <div className="relative">
+            {lines}
+            {status ? <Line>{status}</Line> : null}
+            {typing ? (
+              <Line>
+                <Prompt path={typing.path} />
+                {typing.text}
+                <span className="term-cursor" />
+              </Line>
+            ) : !started ? (
+              <Line>
+                <Prompt path={HOME_PATH} />
+                <span className="term-cursor" />
+              </Line>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Skip hint */}
+        <div className="pointer-events-none absolute bottom-2.5 right-4 font-mono text-[11px] text-zinc-600">
+          press any key to skip
+        </div>
       </div>
     </div>
+  );
+}
+
+/** macOS-style window control: colored dot that reveals its glyph on hover. */
+function WindowDot({ color, glyph }: { color: string; glyph: string }) {
+  return (
+    <span
+      className={`flex h-3 w-3 items-center justify-center rounded-full ${color} text-[8px] font-bold leading-none text-black/75`}
+    >
+      <span className="opacity-70 transition-opacity duration-150 group-hover:opacity-100">
+        {glyph}
+      </span>
+    </span>
   );
 }
 
