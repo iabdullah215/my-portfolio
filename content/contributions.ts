@@ -54,6 +54,18 @@ export const TYPE_META: Record<
 export const contributions: Contribution[] = [
   {
     type: "pr",
+    ref: "#3419",
+    title: "Add NSE script to detect WordPress \"wp2shell\" pre-auth RCE",
+    target: "nmap/nmap",
+    description:
+      "New http-vuln-cve2026-63030 NSE script that fingerprints WordPress core versions affected by the pre-auth RCE chain (CVE-2026-63030 route confusion + CVE-2026-60137 SQLi). Detection is version-based via the generator meta tag and RSS feed, sending no crafted requests, so it is safe against production hosts.",
+    date: "2026-07-27",
+    status: "Open",
+    url: "https://github.com/nmap/nmap/pull/3419",
+    tags: ["nse", "lua", "wordpress", "cve"],
+  },
+  {
+    type: "pr",
     ref: "#3873",
     title: "Reject unhashable keys in RESP3 map parsing",
     target: "redis/go-redis",
