@@ -53,6 +53,19 @@ export const TYPE_META: Record<
 // --- Entries -----------------------------------------------------------------
 export const contributions: Contribution[] = [
   {
+    type: "issue",
+    ref: "#7909",
+    title:
+      "Normalize request path in remote admin access-control check (defense-in-depth)",
+    target: "caddyserver/caddy",
+    description:
+      "Reported that RemoteAdmin's access-control check does a lexical prefix match against the raw, un-normalized request path, so a path like /pki/ca/prod/../../../../load satisfies a prefix scoped to /pki/ca/prod. Not exploitable today because the admin ServeMux redirects .. paths before dispatch, but the authorization layer shouldn't depend on the router to sanitize its input. Proposed cleaning both paths with path.Clean before the boundary check, with regression tests.",
+    date: "2026-07-27",
+    status: "Open",
+    url: "https://github.com/caddyserver/caddy/issues/7909",
+    tags: ["go", "security", "hardening"],
+  },
+  {
     type: "pr",
     ref: "#3419",
     title: "Add NSE script to detect WordPress \"wp2shell\" pre-auth RCE",
