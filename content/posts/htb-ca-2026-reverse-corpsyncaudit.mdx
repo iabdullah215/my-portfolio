@@ -1,0 +1,369 @@
+---
+title: HTB Cyber Apocalypse CTF 2026 - CorpSyncAudit
+description: "A reverse engineering writeup from HTB Cyber Apocalypse CTF 2026 — recovering a deterministic anti-analysis XOR key to decode shellcode hidden inside a replication log's timestamp fields."
+date: "2026-07-29"
+category: "CTF Writeup"
+tags:
+  - reverse-engineering
+  - malware
+---
+
+## Let's get Cracking...
+
+This blog has a reverse engineering challenge writeup that I solved at HTB Cyber Apocalypse CTF 2026.
+
+**Category:** Reverse Engineering (Windows PE / malware-style dropper — string obfuscation, steganographic log encoding, anti-analysis key derivation, process injection)
+
+> The flag decodes out of a **shellcode** that is hidden inside the timestamps of an
+> innocent-looking "replication log". Everything hinges on recovering one 32-bit XOR key,
+> and that key is *deterministic* once you realise the "anti-analysis" values it is built
+> from are actually constants on a clean machine.
+
+---
+
+## 1. The challenge
+
+We are given a Windows binary and a folder of logs:
+
+```
+$ file CorpSyncAudit.exe
+CorpSyncAudit.exe: PE32+ executable (GUI) x86-64 (stripped to external PDB), for MS Windows
+
+$ ls logs/
+sync_20260412_175646.log        # 945 B   – "boring" logs, all identical timestamps
+sync_20260412_192364.log        # 11984 B – the ONE big log with random-looking timestamps
+sync_20260521_150221.log
+...
+```
+
+and a live service:
+
+```
+154.57.164.83:31193      # TCP, silent on connect
+```
+
+The binary is a MinGW/C++ **GUI** app that masquerades as an *"Enterprise Infrastructure
+Monitoring Solution"* (`CorpSync-Audit Enterprise`). Its imports tell the real story:
+`WS2_32` (`socket`, `connect`, `htons`, `inet_pton`) for networking, plus `CreateFileA`,
+`VirtualProtect`, `LoadLibraryA`, `GetProcAddress`, `sidt`-style tricks — a dropper.
+
+### What the binary actually does
+
+The disassembly (via `objdump -d -M intel`, image base `0x140000000`) reveals four moving
+parts:
+
+1. **`0x140005d2f` — the network thread.** It creates a TCP socket, connects to
+   **`127.0.0.1:4445`** (`htons(0x115d)`, `inet_pton(AF_INET, "127.0.0.1", …)`), sends the
+   10-byte string `SYNC_TEST\n`, and reads a response. The remote instance
+   `154.57.164.83:31193` simply forwards to that local `:4445`. Talking to it directly:
+
+   ```
+   >>> send  b'SYNC_TEST\n'
+   <<< {"timestamp": "...", "controller": "CORP-DC-CTRL-01", "overall": "HEALTHY",
+        "nodes": [ {"node":"AD-SRV-01","status":"ONLINE","usn":812617,
+                    "region":"HEADQUARTERS", ...}, ... ]}
+   ```
+
+   → a **benign** health report. This is a connectivity decoy; the flag is **not** here.
+
+2. **`0x140003827` — the "LOG AUDIT COMPLIANCE" decoder.** Reads a `.log` file line by
+   line, decodes hidden bytes out of the timestamp lines, and accumulates them into a
+   global buffer at `0x1400231e0`.
+
+3. **`0x14000340b` — the payload runner.** Takes the decoded global buffer, resolves a
+   batch of `kernel32`/`ntdll` APIs *by hash* (`OpenProcess`, `VirtualAllocEx`,
+   `WriteProcessMemory`, `VirtualProtectEx`, `CreateRemoteThread`), finds **`explorer.exe`**
+   and injects the decoded bytes into it as **shellcode**.
+
+4. **`0x140001a5a` — the anti-analysis / key-derivation routine.** Produces the single
+   32-bit value that both the decoder (§3.4) and the API-hash resolver use.
+
+So the plan writes itself: **the big log encodes shellcode; decode it correctly and read
+the flag out of the shellcode.** "Correctly" means recovering the XOR key from part 4.
+
+### 1.1 Every string is obfuscated
+
+There are almost no plaintext strings. Instead every literal is built at runtime by a
+decoder at **`0x1400016c0`**:
+
+```asm
+1400016d7: mov  dword [rbp-0xc], 0x2066509f   ; 4-byte key = 9f 50 66 20 (LE)
+...
+1400016ff: movzx edx, byte [rax]              ; obfuscated byte
+140001706: and   eax, 3                        ; pos & 3
+140001709: movzx eax, byte [rbp+rax-0xc]       ; key[pos & 3]
+14000170e: xor   eax, edx                       ; plaintext = cipher ^ key[pos&3]
+...
+140001728: sub   rax, 1                          ; decode (len-1) bytes; last byte skipped
+```
+
+i.e. **`plain[i] = cipher[i] ^ [0x9f,0x50,0x66,0x20][i & 3]`**, for `len-1` bytes.
+Reproducing it over `.rdata` deobfuscates everything:
+
+```python
+key = bytes([0x9f,0x50,0x66,0x20])
+def dec(vma, n): d = pe.get_data(vma-ib, n); return bytes(d[i]^key[i&3] for i in range(n-1))
+```
+
+Some of the ~90 recovered strings, which map out the whole program:
+
+```
+Region=            [LIVE]             SYNC_TEST\n        GMT
+explorer.exe       C:\hyberfile.sys   atomm              N/A
+"logs\sync_%04d%02d%02d_%02d%02d%02d.log"
+"%s, %02d/%02d/%04d %02d:%02d:%02d %s UTC"     <- the timestamp line format
+Monday Tuesday Wednesday Thursday Friday Saturday Sunday
+```
+
+The presence of `explorer.exe`, `C:\hyberfile.sys` (a misspelled `hiberfil.sys` anti-forensics
+decoy) and `atomm` confirms the anti-analysis intent.
+
+---
+
+## 2. Key observations
+
+### 2.1 The flag is steganographically packed into timestamp fields
+
+A normal ("boring") log line looks like:
+
+```
+[LIVE] NODE=AD-SRV-01 STATUS=ONLINE LATENCY=0.41ms USN=437723
+Monday, 01/01/2026 12:00:00 PM UTC | Region=BRANCH_OFFICE_B
+```
+
+The decoder (`0x140003827`) only cares about lines containing `Region=`. For each such line
+it re-parses the timestamp with
+
+```c
+sscanf(line, "%63[^,], %d/%d/%d %d:%d:%d %15s %15s", dayname,&d,&mo,&yr,&h,&mi,&s,ampm,tz);
+```
+
+so the **day-of-week name, day, month, year, hour, minute, second, AM/PM, timezone and
+region** are all attacker-chosen carriers. In the *boring* logs they are all constant
+(`Monday 01/01/2026 12:00:00`), encoding nothing. In `sync_20260412_192364.log` they are
+wildly varied — **that** file carries the payload (99 records → 99×4 = **396 bytes**).
+
+### 2.2 Each record produces exactly 4 payload bytes
+
+Function `0x140003215` packs the parsed fields into one 32-bit word and emits it
+big-endian. The layout (from the shifts at `0x140003383`) is:
+
+```
+pack = (f_hour   << 27)     # 5 bits
+     | (f_min    << 21)     # 6 bits
+     | (f_sec    << 15)     # 6 bits
+     | (f_day    << 10)     # 5 bits
+     | (f_month  <<  6)     # 4 bits
+     | ((year - 1990) & 0x3f)   # 6 bits   (0x7c6 = 1990)
+```
+
+with three twists applied *before* packing:
+
+* **Region → 5 hidden bits.** The region string is run through a custom hash
+  (`0x140001775`, §2.3), looked up in a 32-entry table at `0x14001d680`, giving an index
+  `0..31`. Its 5 bits (MSB-first) each gate a conditional XOR on one field
+  (`0x140003117`): `f_hour = hour ^ (bit4? 12:0)`, `f_min = min ^ (bit3? 30:0)`,
+  `f_sec = sec ^ (bit2? 30:0)`, `f_day = day ^ (bit1? 16:0)`, `f_month = month ^ (bit0? 6:0)`.
+* **`TZ == "GMT"` → a mixing transform** (`0x14000314a`) on `(hour,min,sec)`:
+  `mid=(h+m-s)/2 ; (h,m,s) = (h-mid, mid, m-mid)`. `UTC` leaves them alone.
+* **Day-of-week → an XOR mask** (`0x140002f53` returns `Monday=1 … Sunday=7`, default 1).
+  Every one of the 4 output bytes is XORed with this mask.
+
+Finally the 4 big-endian bytes are XORed with a repeating **4-byte key** (§2.4). So:
+
+```
+out[record r][j] = big_endian(pack_r)[j]  ^  daymask_r  ^  key[j]     (j = 0..3)
+```
+
+### 2.3 The region hash is a salted FNV-1a with an avalanche tail
+
+`0x140001775`:
+
+```
+h = 0xcbf29ce484222325                 # FNV-1a 64-bit offset basis (shown as -0x340d631b7bdddcdb)
+for each char c (uppercased if a-z):
+    h = ror64( (h ^ c) * 0x100000001b3, 13 )
+h ^= h>>33; h *= C1; h ^= h>>33; h *= C2; h ^= h>>33   # SplitMix-style finaliser
+```
+
+Hashing every `Region=` value in the big log and looking each up in the 32-entry table
+reproduces a clean bijection (`WORLD→0`, `NORTH_AMERICA→1`, `AFRICA_EAST→15`, …), which
+proves the field decode is byte-exact.
+
+### 2.4 The 4-byte key is *not* random — it is a self-referential constant
+
+The XOR key comes from `0x140001a5a`, which fills a struct and returns
+`struct[+0x14] = struct0 ^ struct4 ^ struct8 ^ structC ^ struct10`. Each term looks like
+a hostile-environment probe, but on a clean machine each is a **fixed value**:
+
+| field | how it is computed (`0x140001a5a`) | value on a clean host |
+|-------|-------------------------------------|-----------------------|
+| `struct0`  | `0x140001a3a` reads **the first byte of the decoder function `0x140003827`** — a self-integrity check. That byte is `push rbp` = **`0x55`**. | `0x55` |
+| `struct4`  | `GetLastError()` after `CreateFileA("C:\\hyberfile.sys", …)`; the decoy file does not exist. | `2` (ERROR_FILE_NOT_FOUND) |
+| `struct8`  | `sidt` then reads the **first word** of the descriptor. The first word of an `SIDT`/`SGDT` result is the **limit**, not a base — and the Windows x64 IDT limit is always **`0x0FFF`**. | `0xFFF` |
+| `structC`  | `(GetTickCount() delta) >> 10` around a tight loop. The loop is far shorter than 1024 ms, so this is `0`. | `0` |
+| `struct10` | a deterministic accumulator: sum of `0..0x4f671`, then sum of `0..0x2b156` with a one-off `^= 0x424a` at iteration `0x2b44`. | `0xf07ec90c` |
+
+Therefore:
+
+```
+key = 0x55 ^ 2 ^ 0xFFF ^ 0 ^ 0xf07ec90c = 0xf07ec6a4
+```
+
+**Confirmation, right there in the binary:** `0x140001a5a` itself passes the literal
+`mov edx, 0xf07ec6a4` as the salt to the hash-based API resolver (`0x14000185f`). Our
+independently-derived key equals a constant the author hard-coded — so it is correct.
+
+The key bytes (big-endian, the order `0x140003892` splits `struct[+0x14]` into
+`[rbp+0x1bc..0x1bf]`) are **`f0 7e c6 a4`**.
+
+---
+
+## 3. The attack in detail
+
+### 3.1 Sanity check: does the key produce code?
+
+The very first record of the big log is
+`Sunday, 16/09/1997 01:25:34 AM UTC | Region=WORLD`. By hand:
+
+```
+Sunday→daymask 7 ; WORLD→index 0 (all region bits 0) ; UTC (no GMT transform)
+pack = (1<<27)|(25<<21)|(34<<15)|(16<<10)|(9<<6)|(1997-1990) = 0x0B314247
+bytes = 0B 31 42 47   ^ daymask 7   = 0C 36 45 40
+      ^ key f0 7e c6 a4              = FC 48 83 E4
+```
+
+`fc 48 83 e4 …` = `cld ; and rsp, 0xfffffff0` — the textbook **x86-64 shellcode prologue**.
+The key is right and the payload is shellcode.
+
+### 3.2 Full decode
+
+```python
+import re, pefile, struct
+MASK=(1<<64)-1
+def ror(x,r): return ((x>>r)|(x<<(64-r)))&MASK
+def fnv(s):
+    h=(2**64-0x340d631b7bdddcdb)&MASK
+    for ch in s:
+        c=ord(ch); c-=0x20 if 0x60<c<=0x7a else 0
+        h=ror(((h^c)*0x100000001b3)&MASK,13)
+    h^=h>>33; h=(h*((2**64-0xae502812aa7333)&MASK))&MASK
+    h^=h>>33; h=(h*((2**64-0x3b314601e57a13ad)&MASK))&MASK
+    h^=h>>33; return h
+
+pe=pefile.PE('CorpSyncAudit.exe'); ib=pe.OPTIONAL_HEADER.ImageBase
+tbl={v:i for i,v in enumerate(struct.unpack('<32Q', pe.get_data(0x14001d680-ib,256)))}
+days=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+KEY=[0xf0,0x7e,0xc6,0xa4]
+
+def record(dn,day,mon,yr,hh,mm,ss,tz,region):
+    dm  = days.index(dn)+1 if dn in days else 1
+    idx = tbl[fnv(region)]
+    rs  = [(idx>>(4-p))&1 for p in range(5)]           # region bits, MSB first
+    A,B,C = hh,mm,ss
+    if tz=='GMT':
+        mid=int((A+B-C)/2); A,B,C = A-mid, mid, B-mid
+    xor = lambda v,b,x: v^x if b else v
+    pack = ((xor(A,rs[0],12)<<27)|(xor(B,rs[1],30)<<21)|(xor(C,rs[2],30)<<15)
+           |(xor(day,rs[3],16)<<10)|(xor(mon,rs[4],6)<<6)|((yr-1990)&0x3f)) & 0xffffffff
+    return [((pack>>(24-8*k))&0xff)^dm for k in range(4)]
+
+pat=re.compile(r'^(\w+), (\d+)/(\d+)/(\d+) (\d+):(\d+):(\d+) (\w+) (\w+) \| Region=(\S+)')
+out=[]
+for ln in open('logs/sync_20260412_192364.log'):
+    m=pat.match(ln.strip())
+    if m:
+        g=m.groups()
+        out += record(g[0],*(int(g[i]) for i in (1,2,3,4,5,6)), g[8], g[9])
+sc = bytes(out[i]^KEY[i%4] for i in range(len(out)))
+open('shellcode.bin','wb').write(sc)
+print(sc[:16].hex())              # fc4883e4f0e8c0000000415141505251...
+```
+
+### 3.3 Reading the flag out of the shellcode
+
+The 396-byte blob is a standard Windows x64 stager (PEB walk, API hashing) that ends by
+spawning a command. Pulling ASCII runs out of it:
+
+```
+$ strings -n 4 shellcode.bin
+AQAPRQVH1 ...
+net user backup_admin SFRCe2Q0NzNfNzFtM180bmRfNjRja2QwMHI1fQ== /add
+    && net localgroup "Remote Desktop Users" backup_admin /add
+```
+
+The "password" is base64:
+
+```python
+>>> import base64
+>>> base64.b64decode("SFRCe2Q0NzNfNzFtM180bmRfNjRja2QwMHI1fQ==").decode()
+'HTB{d473_71m3_4nd_64ckd00r5}'
+```
+
+The theme — *"date, time and backdoors"* — matches the mechanic exactly: the flag was
+smuggled through the **date/time** fields of the log, and the payload plants a
+**backdoor** account.
+
+---
+
+## 4. Putting it together
+
+The end-to-end solve is offline; no code execution or Wine needed:
+
+1. Deobfuscate `.rdata` (XOR `9f 50 66 20`, `pos&3`) to map out the program.
+2. Recover the anti-analysis key **`0xf07ec6a4`** analytically (§2.4) — the constants
+   `0x55` (self-integrity), `2` (missing decoy file), `0xFFF` (IDT limit), `0`
+   (fast-loop timing) and `0xf07ec90c` (deterministic accumulator). Cross-checked against
+   the hard-coded `mov edx, 0xf07ec6a4` in `0x140001a5a`.
+3. Re-implement the timestamp packing (`0x140003215`), the region FNV hash (`0x140001775`)
+   and day-of-week / GMT transforms, then decode `sync_20260412_192364.log`.
+4. XOR with `f0 7e c6 a4` → x64 shellcode; base64-decode the embedded `net user` command.
+
+### Verification against the live target
+
+The remote at `154.57.164.83:31193` is only the `SYNC_TEST` connectivity oracle; probing it
+confirms the binary's client side (it returns the benign JSON health report and nothing
+else), which is exactly what the disassembly of `0x140005d2f` predicts. The flag itself is
+fully recovered from the shipped `CorpSyncAudit.exe` + `logs/` bundle:
+
+```
+$ python3 solve.py
+prologue: fc4883e4f0e8c0000000
+payload : net user backup_admin <b64> /add && net localgroup "Remote Desktop Users" ...
+FLAG    : HTB{d473_71m3_4nd_64ckd00r5}
+```
+
+---
+
+## 5. Flag
+
+```
+HTB{d473_71m3_4nd_64ckd00r5}
+```
+
+---
+
+### Appendix — function map
+
+| addr | role |
+|------|------|
+| `0x1400016c0` | runtime string decoder (`^ 9f 50 66 20`, `pos&3`, `len-1`) |
+| `0x140001759` | `ror64` helper |
+| `0x140001775` | region hash (salted FNV-1a + SplitMix finaliser) |
+| `0x140001a3a` | self-integrity check → reads `0x140003827[0]` = `0x55` |
+| `0x140001a5a` | anti-analysis **key derivation** → `0xf07ec6a4` |
+| `0x14000185f` | resolve API by hash, salted with the key |
+| `0x140002f53` | day-of-week → XOR mask (`Monday=1 … Sunday=7`) |
+| `0x140003117` | region-bit conditional field XOR |
+| `0x14000314a` | `TZ==GMT` `(h,m,s)` mixing transform |
+| `0x140003215` | pack fields → 4 payload bytes (`^daymask`) |
+| `0x140003827` | **log decoder** (per `Region=` line → global buffer) |
+| `0x14000340b` | inject decoded shellcode into `explorer.exe` |
+| `0x140005d2f` | network thread → `127.0.0.1:4445`, sends `SYNC_TEST\n` |
+| `0x14001d680` | 32-entry region-hash lookup table |
+
+I hope that you liked this blog and I'll see you in the next one. Stay in the loop with my latest content – follow me on [Medium](https://medium.com/@iabdullah_215) for more!
+
+## THANKS
+
+## MUHAMMAD ABDULLAH

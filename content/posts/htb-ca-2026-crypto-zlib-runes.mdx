@@ -1,0 +1,295 @@
+---
+title: HTB Cyber Apocalypse CTF 2026 - zlib runes
+description: "A crypto writeup from HTB Cyber Apocalypse CTF 2026 — recovering a hidden Adler-32 target via checksum composition, then forging a single number whose Adler-32 and CRC-32 both collide with it."
+date: "2026-07-29"
+category: "CTF Writeup"
+tags:
+  - crypto
+---
+
+## Let's get Cracking...
+
+This blog has a crypto challenge writeup that I solved at HTB Cyber Apocalypse CTF 2026.
+
+**Category:** Crypto
+
+---
+
+## 1. The challenge
+
+We are given a single file, `server.py`:
+
+```python
+import zlib
+import functools
+import secrets
+import signal
+
+signal.alarm(30)
+def apply_rune(rune, *nums):
+    return rune("".join(str(num) for num in nums).encode())
+
+num = secrets.randbits(128)
+h = apply_rune(zlib.adler32, num)
+
+my_salt = secrets.randbits(128)
+your_salt = int(input("your salt: "))
+assert your_salt.bit_length() >= 128
+salted = apply_rune(zlib.adler32, my_salt, num, your_salt)
+print(f"{my_salt = }")
+print(f"{salted = }")
+
+MENU = '''Options:
+1. Give number
+2. Stop
+3. Exit
+'''
+
+nums = []
+while True:
+    try:
+        option = int(input(MENU))
+        if option == 2:
+            break
+        elif option == 1:
+            your_num = int(input("n: "))
+            assert your_num not in nums
+            assert apply_rune(zlib.adler32, your_num) == h
+            nums.append(your_num)
+        else:
+            exit("bye")
+    except:
+        exit("bye")
+
+assert apply_rune(zlib.crc32, *nums) == h
+assert functools.reduce(lambda a, b: a ^ b, [apply_rune(zlib.crc32, num) for num in nums]) == h
+print(open("flag.txt").read())
+```
+
+### What the helper does
+
+`apply_rune(rune, *nums)` takes some integers, turns each into its **decimal string**,
+concatenates them, encodes to bytes, and runs a zlib checksum (`adler32` or `crc32`) over
+the result. So `apply_rune(zlib.adler32, 123)` is literally `zlib.adler32(b"123")`.
+
+### The secret and the target
+
+```python
+num = secrets.randbits(128)          # secret 128-bit integer
+h   = zlib.adler32(str(num).encode())# 32-bit target, NEVER printed
+```
+
+`h` is the value we must hit — but it is never sent to us.
+
+### The win conditions
+
+At the end the server requires, over the list `nums` of numbers we supplied:
+
+1. every `your_num` we submit satisfies `adler32(str(your_num)) == h`
+   (checked immediately when we submit it — a failure kills the connection),
+2. `crc32( "".join(str(n) for n in nums) ) == h`,
+3. `XOR of crc32(str(n)) over all n in nums == h`.
+
+### The salt oracle
+
+Before the menu, the server leaks one derived value:
+
+```python
+my_salt = secrets.randbits(128)                 # printed
+your_salt = int(input())                         # WE choose it (>= 128 bits)
+salted = adler32(str(my_salt)+str(num)+str(your_salt))   # printed
+```
+
+So we learn `my_salt` and `salted`, and we control `your_salt`.
+
+---
+
+## 2. Key observations
+
+### 2.1 One number is enough
+
+If we submit a **single** number `x` and then press `2` (Stop), then `nums = [x]` and all
+three win conditions collapse to just two:
+
+* condition 1 → `adler32(str(x)) == h`
+* condition 2 → `crc32(str(x)) == h` (the concat of one element is just `str(x)`)
+* condition 3 → `crc32(str(x)) == h` (XOR of one element is itself) — same as condition 2
+
+**So the whole challenge reduces to:**
+
+> Find one integer `x` such that `adler32(str(x)) == h` **and** `crc32(str(x)) == h`.
+
+### 2.2 We can recover `h` even though it is hidden
+
+`h = adler32(str(num))` and `salted = adler32(str(my_salt) + str(num) + str(your_salt))`
+share the same middle chunk `str(num)`. Adler-32 is **composable**: there is a public
+function `adler32_combine(a, b, len_b)` that computes the Adler-32 of `A || B` from the
+Adler-32 of the two halves and the length of the second half. Because it is composable,
+it is also **invertible** — given the checksum of `A||B` and of one half, you can recover
+the other half's checksum.
+
+We know both the prefix `str(my_salt)` and the suffix `str(your_salt)` exactly, so we can
+peel them off `salted` and recover `adler32(str(num)) = h`. (Details in §3.1.)
+
+### 2.3 Both checksums are linear — so `x` can be *forged*
+
+Adler-32 and CRC-32 are **non-cryptographic, affine** checksums. That means we can
+algebraically construct a decimal string whose Adler-32 and CRC-32 are *both* forced to a
+chosen value `h`, instead of searching for it. (Details in §3.2.)
+
+That is exactly the moral the flag spells out.
+
+---
+
+## 3. The attack in detail
+
+### 3.1 Recovering `h` from the salt leak
+
+zlib's `adler32_combine(a1, a2, len2)` (with `BASE = 65521`) is:
+
+```
+rem = len2 % BASE
+A   = (A(a1) + A(a2) - 1)                    mod BASE
+B   = (rem*(A(a1)-1) + B(a1) + B(a2))        mod BASE
+```
+
+where `A(x) = x & 0xffff` (the low half) and `B(x) = x >> 16` (the high half).
+
+Inverting it to recover the **first** operand `a1` from the combined result:
+
+```
+A(a1) = (A(res) - A(a2) + 1)                         mod BASE
+B(a1) = (B(res) - rem*(A(a1)-1) - B(a2))             mod BASE
+```
+
+We apply this twice, peeling from the outside in. Let
+`S = str(my_salt)`, `N = str(num)`, `Y = str(your_salt)`:
+
+1. `salted = combine( adler32(S+N), adler32(Y), len(Y) )`
+   → un-combine the known suffix `Y` to get `X = adler32(S+N)`.
+2. `X = combine( adler32(S), h, len(N) )`
+   → un-combine the known prefix `S` to get `h = adler32(N)`.
+
+Working through step 2:
+
+```
+A(h) = (A(X) - A(adler32(S)) + 1)  mod BASE          # exact, no unknowns
+B(h) = (B(X) - len(N)*(A(adler32(S))-1) - B(adler32(S))) mod BASE
+```
+
+The **low half `A(h)` is recovered exactly.** The high half `B(h)` depends on
+`len(N) = len(str(num))`, which we don't directly know.
+
+**Pinning down `len(str(num))`.** For Adler-32, `A(h) - 1` equals the sum of the ASCII
+values of the digits of `num`. Each digit byte is in `[48, 57]`, so for an `L`-digit
+number `A(h)-1 = 48*L + digitsum` with `digitsum in [0, 9L]`. Combined with the prior for
+a random 128-bit integer (≈70% are 39 digits, ≈26% are 38, the rest 37), we pick the most
+likely `L`. Measured accuracy of this guess:
+
+```
+$ python3 sim.py
+actual len distribution: {39: 2076, 38: 853, 37: 68, 36: 2, 35: 1}
+guess-correct rate: 2738/3000 = 0.913
+```
+
+So ~91% of the time we nail `h` on the first connection; a wrong guess just aborts the
+connection and we reconnect (each connection has a fresh `num`). Expected tries ≈ 1.1.
+
+### 3.2 Forging `x` with `adler32(str(x)) == h` and `crc32(str(x)) == h`
+
+Let the decimal string be `n` digits `g_1..g_n`, byte value `= 48 + g_i`.
+
+**Adler-32 is affine mod 65521.** With `A = 1 + sum(bytes)` and
+`B = n + sum_i (n-i+1)*byte_i`, changing a single digit by `+1` at 1-indexed position `i`
+adds `+1` to `A` and `+(n-i+1)` to `B` (mod 65521). So:
+
+* We choose the total length `n` so that the required `A` value is reachable
+  (the digit-sum budget is `9n`, which must cover the needed residue — this constrains
+  `n`, and we scan `n` downward from 4200 to find a length that works).
+* We then place digit "mass" across positions so the weighted sum hits the required `B`
+  value. Because position weights span the full range `1..n < 65521`, we can steer `B` to
+  any residue by moving units between positions (which leaves `A` untouched).
+
+**CRC-32 is affine over GF(2).** After Adler is satisfied we still need `crc32 == h`
+without disturbing Adler. Trick: an **Adler-neutral triple**. Take three *adjacent*
+positions and flip their digits by `(+1, -2, +1)`, e.g. `1,2,1  ->  2,0,2`:
+
+* change in `A`: `+1 - 2 + 1 = 0`
+* change in `B`: `w·(+1) + (w-1)·(-2) + (w-2)·(+1) = 0`
+
+So the triple leaves **both** Adler halves unchanged but flips a fixed set of CRC bits.
+We lay down ~64 such triples, measure each one's CRC contribution vector, and solve a
+32-bit **GF(2) linear system** (Gaussian elimination) to choose which triples to flip so
+that the final `crc32` equals `h`.
+
+**Length constraint gotcha.** Python 3.11+ refuses to `int()`-parse strings longer than
+**4300 digits** by default, and the server does exactly `int(input())`. So `x` must stay
+under that limit — our constructor produces numbers of ≤ 4200 digits.
+
+Stress test of the constructor over random targets:
+
+```
+$ python3 build.py
+60/60 ok, maxdigits=4200, 0.19s
+```
+
+Every forged `x` satisfies both `adler32(str(x)) == h` and `crc32(str(x)) == h`,
+comfortably under the digit limit, in a fraction of a second.
+
+---
+
+## 4. Putting it together
+
+Per connection the client:
+
+1. reads `your salt:` and sends a fixed `>= 128`-bit salt,
+2. parses `my_salt` and `salted`,
+3. recovers `h` (exact low half + best-guess length for the high half),
+4. forges `x` with `build(h)`,
+5. sends `1`, the number `x`, then `2` (Stop),
+6. reads the flag (or reconnects if the length guess was wrong).
+
+### Local end-to-end verification
+
+I reproduced the server locally (`sim_server.py`, fake flag) and ran the client against it:
+
+```
+$ python3 sim_server.py &   # listens on 127.0.0.1:9999
+$ python3 client.py 127.0.0.1 9999
+[try 0] len=39 digits=4111
+=== OUTPUT ===
+
+1. Give number
+2. Stop
+3. Exit
+HTB{sim_flag_local_test}
+```
+
+### Against the real target
+
+```
+$ python3 client.py 154.57.164.69 31316
+[try 0] len=39 digits=4111
+=== OUTPUT ===
+
+1. Give number
+2. Stop
+3. Exit
+HTB{zl1b_func710n5_r34lly_5houldn7_b3_us3d_1n_cryp70!}
+```
+
+Solved on the first connection.
+
+---
+
+## 5. Flag
+
+```
+HTB{zl1b_func710n5_r34lly_5houldn7_b3_us3d_1n_cryp70!}
+```
+
+I hope that you liked this blog and I'll see you in the next one. Stay in the loop with my latest content – follow me on [Medium](https://medium.com/@iabdullah_215) for more!
+
+## THANKS
+
+## MUHAMMAD ABDULLAH
