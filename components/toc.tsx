@@ -19,6 +19,21 @@ interface TocProps {
  */
 export function Toc({ headings }: TocProps) {
   const [activeSlug, setActiveSlug] = useState<string>("");
+  // Hide the TOC once the footer scrolls into view so the two never overlap
+  // at the bottom of long posts.
+  const [footerVisible, setFooterVisible] = useState(false);
+
+  useEffect(() => {
+    const footer = document.querySelector("footer");
+    if (!footer) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setFooterVisible(entry.isIntersecting),
+      { rootMargin: "0px 0px -32px 0px" }
+    );
+    observer.observe(footer);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (headings.length === 0) return;
@@ -60,12 +75,14 @@ export function Toc({ headings }: TocProps) {
   return (
     <nav
       aria-label="Table of contents"
-      className="fixed left-[calc(50%+24rem)] top-32 hidden w-60 xl:block"
+      className={`fixed left-[calc(50%+24rem)] top-32 hidden max-h-[calc(100vh-10rem)] w-60 flex-col transition-opacity duration-300 xl:flex ${
+        footerVisible ? "pointer-events-none opacity-0" : "opacity-100"
+      }`}
     >
-      <p className="mb-3 font-mono text-xs text-muted-foreground">
+      <p className="mb-3 shrink-0 font-mono text-xs text-muted-foreground">
         <span className="text-accent">$</span> grep &quot;^#&quot; post.mdx
       </p>
-      <ul className="space-y-1 border-l border-border">
+      <ul className="min-h-0 space-y-1 overflow-y-auto overscroll-contain border-l border-border [scrollbar-width:thin]">
         {headings.map((h) => (
           <li key={h.slug}>
             <a
