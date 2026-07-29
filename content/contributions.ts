@@ -53,15 +53,28 @@ export const TYPE_META: Record<
 // --- Entries -----------------------------------------------------------------
 export const contributions: Contribution[] = [
   {
+    type: "pr",
+    ref: "#7910",
+    title:
+      "Normalize request path in remote admin access-control check (defense-in-depth)",
+    target: "caddyserver/caddy",
+    description:
+      "Fix for issue #7909: RemoteAdmin's access-control check did a lexical prefix match against the raw, un-normalized request path, so /pki/ca/prod/../../../../load satisfied a prefix scoped to /pki/ca/prod. Cleans both the request path and the allowed path with path.Clean before the segment-boundary check, keeping existing semantics (/pki still doesn't match /pkisecret). Includes regression tests for dot-dot, encoded, sibling, collapsed-slash, and trailing-slash traversal.",
+    date: "2026-07-30",
+    status: "Merged",
+    url: "https://github.com/caddyserver/caddy/pull/7910",
+    tags: ["go", "security", "hardening"],
+  },
+  {
     type: "issue",
     ref: "#7909",
     title:
       "Normalize request path in remote admin access-control check (defense-in-depth)",
     target: "caddyserver/caddy",
     description:
-      "Reported that RemoteAdmin's access-control check does a lexical prefix match against the raw, un-normalized request path, so a path like /pki/ca/prod/../../../../load satisfies a prefix scoped to /pki/ca/prod. Not exploitable today because the admin ServeMux redirects .. paths before dispatch, but the authorization layer shouldn't depend on the router to sanitize its input. Proposed cleaning both paths with path.Clean before the boundary check, with regression tests.",
-    date: "2026-07-27",
-    status: "Open",
+      "Reported that RemoteAdmin's access-control check does a lexical prefix match against the raw, un-normalized request path, so a path like /pki/ca/prod/../../../../load satisfies a prefix scoped to /pki/ca/prod. Not exploitable today because the admin ServeMux redirects .. paths before dispatch, but the authorization layer shouldn't depend on the router to sanitize its input. Proposed cleaning both paths with path.Clean before the boundary check, with regression tests. Resolved by PR #7910.",
+    date: "2026-07-30",
+    status: "Resolved",
     url: "https://github.com/caddyserver/caddy/issues/7909",
     tags: ["go", "security", "hardening"],
   },
