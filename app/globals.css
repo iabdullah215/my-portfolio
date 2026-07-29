@@ -298,6 +298,95 @@ code[data-line-numbers] > [data-line]::before {
   opacity: 1;
 }
 
+/*
+ * Callout / admonition boxes. Blog posts use `>` blockquotes for asides
+ * ("Debugging note…", spoiler warnings, etc). Render them as a tinted panel
+ * with an accent bar and a `//` marker instead of the default quote styling.
+ */
+.prose blockquote {
+  position: relative;
+  margin: 1.5rem 0;
+  border: 0;
+  border-left: 3px solid rgb(var(--accent));
+  border-radius: 0 0.5rem 0.5rem 0;
+  background-color: rgb(var(--accent) / 0.07);
+  padding: 0.85rem 1.1rem 0.85rem 2.4rem;
+  color: rgb(var(--foreground));
+  font-style: normal;
+  font-weight: 400;
+}
+
+/* Terminal-style `//` marker in the gutter */
+.prose blockquote::before {
+  content: "//";
+  position: absolute;
+  top: 0.85rem;
+  left: 1rem;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.8em;
+  font-weight: 600;
+  color: rgb(var(--accent));
+}
+
+.prose blockquote > :first-child {
+  margin-top: 0;
+}
+
+.prose blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+/* Kill the typographic quotation marks the typography plugin injects */
+.prose blockquote p:first-of-type::before,
+.prose blockquote p:last-of-type::after {
+  content: "";
+}
+
+/*
+ * Tables. The writeups are table-dense (register state, function-address maps,
+ * protection matrices), so give them a bordered, rounded, zebra-striped,
+ * monospace treatment that matches the terminal aesthetic.
+ */
+.prose table {
+  width: 100%;
+  margin: 1.75rem 0;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  border: 1px solid rgb(var(--border));
+  border-radius: 0.5rem;
+  background-color: rgb(var(--background));
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.8em;
+  line-height: 1.5;
+}
+
+.prose thead {
+  background-color: rgb(var(--muted));
+}
+
+.prose thead th {
+  font-weight: 600;
+  text-align: left;
+  color: rgb(var(--foreground));
+  border-bottom: 1px solid rgb(var(--border));
+}
+
+.prose th,
+.prose td {
+  padding: 0.5rem 0.85rem;
+  border-bottom: 1px solid rgb(var(--border));
+  vertical-align: top;
+}
+
+.prose tbody tr:nth-child(even) {
+  background-color: rgb(var(--muted) / 0.4);
+}
+
+.prose tbody tr:last-child td {
+  border-bottom: 0;
+}
+
 /* ==================== Motion & interaction utilities ==================== */
 
 @keyframes fade-up {

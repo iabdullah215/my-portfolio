@@ -42,7 +42,7 @@ export function PreBlock({ children, ...props }: ComponentProps<"pre">) {
       {theme && (
         <div className="absolute -top-8 right-3 flex items-center gap-2">
           {language && language !== "plaintext" && (
-            <span className="font-mono text-[11px] text-muted-foreground">
+            <span className="rounded border border-border/70 bg-background/50 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
               {language}
             </span>
           )}
