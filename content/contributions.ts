@@ -54,6 +54,30 @@ export const TYPE_META: Record<
 export const contributions: Contribution[] = [
   {
     type: "pr",
+    ref: "#10919",
+    title: "Deny inherited object members in access-control checks instead of throwing",
+    target: "better-auth/better-auth",
+    description:
+      "Permission resources come straight from the request body, so naming an Object.prototype member like constructor or toString made the statements lookup return a function rather than undefined. The unknown-resource guard saw a truthy value and evaluation continued into allowedActions.includes(), throwing a TypeError — a 500 and a cheap error oracle where the contract is fail-closed. Requires an own, array-valued statement via Object.hasOwn plus Array.isArray, so inherited or malformed entries degrade to a deny. Seven regression tests over constructor, toString, valueOf, hasOwnProperty, and __proto__.",
+    date: "2026-08-21",
+    status: "Open",
+    url: "https://github.com/better-auth/better-auth/pull/10919",
+    tags: ["typescript", "security", "access-control", "prototype-pollution"],
+  },
+  {
+    type: "pr",
+    ref: "#10917",
+    title: "Support hashed and encrypted OTP storage in the phone-number plugin",
+    target: "better-auth/better-auth",
+    description:
+      "phone-number was the only OTP-based plugin still persisting its code in plain text and comparing it with !==, having been missed by the sweep that added storeOTP to email-otp, magic-link, one-time-token, and two-factor. Adds the same storeOTP option (plain / hashed / encrypted / custom hasher or encryptor) plus constant-time verification, with colon-safe parsing of the attempt-count suffix so encrypted payloads round-trip correctly. Defaults to plain, so existing deployments need no migration.",
+    date: "2026-08-21",
+    status: "Open",
+    url: "https://github.com/better-auth/better-auth/pull/10917",
+    tags: ["typescript", "security", "otp", "cryptography"],
+  },
+  {
+    type: "pr",
     ref: "#7910",
     title:
       "Normalize request path in remote admin access-control check (defense-in-depth)",
