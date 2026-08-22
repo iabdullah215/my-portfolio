@@ -78,6 +78,30 @@ export const contributions: Contribution[] = [
   },
   {
     type: "pr",
+    ref: "#38180",
+    title: "Enforce password validation for empty passwords in update_user",
+    target: "wazuh/wazuh",
+    description:
+      "Reported privately: update_user gated its password checks behind a truthiness test, so an empty string fell straight through the length, complexity, and reserved-user rules and was accepted as a password. The fix swaps if password: for if password is not None: in framework/wazuh/security.py, so every non-null value is validated and empty passwords are rejected with error 5009; regression cases cover both reserved and regular accounts. Credited as reporter in the PR; CVE and advisory pending.",
+    date: "2026-08-05",
+    status: "Merged",
+    url: "https://github.com/wazuh/wazuh/pull/38180",
+    tags: ["python", "security", "auth", "input-validation"],
+  },
+  {
+    type: "pr",
+    ref: "#38135",
+    title: "Improve login attempt limiting under concurrent requests",
+    target: "wazuh/wazuh",
+    description:
+      "Reported privately: the API's brute-force protection incremented its per-IP attempt counter only after credential validation had finished, so concurrent login requests could clear the gate check before any of them were recorded — a TOCTOU window in which the configured attempt limit could be exceeded. The fix moves counting into the check_blocked_ip middleware, ahead of authentication and under the existing asyncio lock, making the gate check and the increment atomic; a new settle_login_attempt() decrements on success so legitimate clients behind NAT or a load balancer aren't eventually blocked. Credited as reporter in the PR; CVE and advisory pending.",
+    date: "2026-08-04",
+    status: "Merged",
+    url: "https://github.com/wazuh/wazuh/pull/38135",
+    tags: ["python", "security", "race-condition", "auth"],
+  },
+  {
+    type: "pr",
     ref: "#7910",
     title:
       "Normalize request path in remote admin access-control check (defense-in-depth)",
