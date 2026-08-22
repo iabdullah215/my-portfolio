@@ -1,0 +1,9 @@
+# pnpm 11 blocks dependency build scripts unless allowlisted here. Each entry
+# below needs its own: esbuild, unrs-resolver, and sharp fetch platform
+# binaries, and contentlayer2 builds the MDX pipeline `next build` depends on.
+allowBuilds:
+  contentlayer2: true
+  esbuild: true
+  protobufjs: true
+  sharp: true
+  unrs-resolver: true

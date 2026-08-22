@@ -29,12 +29,13 @@ const fonts = [
   { name: "JetBrains Mono", data: fontBold, weight: 700 as const, style: "normal" as const },
 ];
 
+// Next 15 hands route-handler `params` in as a Promise.
 interface OgContext {
-  params: { slug: string[] };
+  params: Promise<{ slug: string[] }>;
 }
 
 export async function GET(_req: Request, { params }: OgContext) {
-  const slug = params.slug.join("/");
+  const slug = (await params).slug.join("/");
   const post = allPosts.find((p) => p.slugAsParams === slug);
 
   const title = post?.title ?? "Hwat Sauce";

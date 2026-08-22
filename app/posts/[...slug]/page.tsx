@@ -8,13 +8,16 @@ import { TerminalBanner } from "@/components/terminal-banner"
 import { ReadingProgress } from "@/components/reading-progress"
 import { Toc, type TocHeading } from "@/components/toc"
 
-interface PostProps {
-  params: {
-    slug: string[]
-  }
+type PostParams = {
+  slug: string[]
 }
 
-async function getPostFromParams(params: PostProps["params"]) {
+// Next 15 hands `params` to pages and generateMetadata as a Promise.
+interface PostProps {
+  params: Promise<PostParams>
+}
+
+async function getPostFromParams(params: PostParams) {
   const slug = params?.slug?.join("/")
   const post = allPosts.find((post) => post.slugAsParams === slug)
 
@@ -28,7 +31,7 @@ async function getPostFromParams(params: PostProps["params"]) {
 export async function generateMetadata({
   params,
 }: PostProps): Promise<Metadata> {
-  const post = await getPostFromParams(params)
+  const post = await getPostFromParams(await params)
 
   if (!post) {
     return {}
@@ -57,14 +60,14 @@ export async function generateMetadata({
   }
 }
 
-export async function generateStaticParams(): Promise<PostProps["params"][]> {
+export async function generateStaticParams(): Promise<PostParams[]> {
   return allPosts.map((post) => ({
     slug: post.slugAsParams.split("/"),
   }))
 }
 
 export default async function PostPage({ params }: PostProps) {
-  const post = await getPostFromParams(params)
+  const post = await getPostFromParams(await params)
 
   if (!post) {
     notFound()

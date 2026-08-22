@@ -1,5 +1,10 @@
 import { allPosts } from "contentlayer/generated";
 
+// Next 15 stopped prerendering GET route handlers by default. The feed is
+// built purely from build-time contentlayer data, so keep it static as it was
+// under Next 14 rather than re-rendering it on every request.
+export const dynamic = "force-static";
+
 const siteUrl = "https://iabdullah.vercel.app";
 const siteTitle = "Hwat Sauce";
 const siteDescription = "My Blog/Portfolio Website";
