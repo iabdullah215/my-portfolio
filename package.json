@@ -35,5 +35,11 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.48.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "sharp": "^0.35.3",
+      "postcss": "^8.5.26"
+    }
   }
 }
