@@ -7,3 +7,14 @@ allowBuilds:
   protobufjs: true
   sharp: true
   unrs-resolver: true
+
+# next@15.5.23 pins sharp to an optional ^0.34.3, but 0.34.x inherits the
+# libvips CVEs fixed in 0.35.0. Next only reaches for sharp when self-hosting
+# image optimization (Vercel optimizes on its own infra), and the API surface
+# Next uses is unchanged across the major, so forcing 0.35.x is safe here.
+overrides:
+  sharp: ^0.35.3
+  # Tailwind's postcss-* helpers drag in 8.4.x alongside our own 8.5.x. All the
+  # open postcss advisories need >=8.5.23 and the gap is a minor, so collapse
+  # every copy onto one current version rather than shipping three.
+  postcss: ^8.5.26

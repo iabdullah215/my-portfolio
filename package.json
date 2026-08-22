@@ -24,7 +24,7 @@
     "next": "15.5.23",
     "next-contentlayer2": "^0.5.5",
     "next-themes": "^0.2.1",
-    "postcss": "8.4.23",
+    "postcss": "8.5.26",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "rehype-pretty-code": "0.10.2",
