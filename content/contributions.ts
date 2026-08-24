@@ -59,7 +59,7 @@ export const contributions: Contribution[] = [
       "Guard ext4 extent-tree parsing against out-of-bounds reads on malformed images",
     target: "apple/containerization",
     description:
-      "Companion to #848 on the same untrusted-input reader. getExtents walked 0..<entries reading fixed 12-byte records with subdata, trusting the entry counts in the on-disk extent headers without checking them against the bytes available — but the inode block region holds only 60 bytes, so a depth-0 header claiming more than four leaves (or a depth-1 header claiming more than four indices, or a leaf block trusting its own header) reads past the buffer and traps the process. Bounds-checks every fixed-size read and throws EXT4.Error.invalidExtents so corruption surfaces rather than silently truncating, and fixes a latent reversed range when reading a leaf header that was benign only because the offset happened to be zero. Decode is extracted into an internal helper so the four new tests can drive crafted inode blocks directly.",
+      "Companion to #848 on the same untrusted-input reader. getExtents walked 0..<entries reading fixed 12-byte records with subdata, trusting the entry counts in the on-disk extent headers without checking them against the bytes available, but the inode block region holds only 60 bytes, so a depth-0 header claiming more than four leaves (or a depth-1 header claiming more than four indices, or a leaf block trusting its own header) reads past the buffer and traps the process. Bounds-checks every fixed-size read and throws EXT4.Error.invalidExtents so corruption surfaces rather than silently truncating, and fixes a latent reversed range when reading a leaf header that was benign only because the offset happened to be zero. Decode is extracted into an internal helper so the four new tests can drive crafted inode blocks directly.",
     date: "2026-08-24",
     status: "Open",
     url: "https://github.com/apple/containerization/pull/849",
@@ -72,7 +72,7 @@ export const contributions: Contribution[] = [
       "Guard ext4 directory-entry parsing against out-of-bounds reads on malformed images",
     target: "apple/containerization",
     description:
-      "An ext4 image is untrusted input, but EXT4Reader.getDirEntries read at attacker-controlled offsets without bounds checks: the fixed 8-byte header was loaded whenever offset < block length, so a crafted recordLength landing 1–7 bytes from the end ran past the buffer, and the entry name was read using a nameLength taken straight from the image and never validated. Data.subdata traps on an out-of-range slice, so a malformed image is a SIGTRAP denial of service against any caller listing a directory. Adds two guards that break out of the parse loop like the adjacent recordLength check, plus four tests — one well-formed regression case and three malformed blocks that each crash the reader without the fix.",
+      "An ext4 image is untrusted input, but EXT4Reader.getDirEntries read at attacker-controlled offsets without bounds checks: the fixed 8-byte header was loaded whenever offset < block length, so a crafted recordLength landing 1–7 bytes from the end ran past the buffer, and the entry name was read using a nameLength taken straight from the image and never validated. Data.subdata traps on an out-of-range slice, so a malformed image is a SIGTRAP denial of service against any caller listing a directory. Adds two guards that break out of the parse loop like the adjacent recordLength check, plus four tests: one well-formed regression case and three malformed blocks that each crash the reader without the fix.",
     date: "2026-08-24",
     status: "Open",
     url: "https://github.com/apple/containerization/pull/848",
@@ -84,7 +84,7 @@ export const contributions: Contribution[] = [
     title: "Deny inherited object members in access-control checks instead of throwing",
     target: "better-auth/better-auth",
     description:
-      "Permission resources come straight from the request body, so naming an Object.prototype member like constructor or toString made the statements lookup return a function rather than undefined. The unknown-resource guard saw a truthy value and evaluation continued into allowedActions.includes(), throwing a TypeError — a 500 and a cheap error oracle where the contract is fail-closed. Requires an own, array-valued statement via Object.hasOwn plus Array.isArray, so inherited or malformed entries degrade to a deny. Seven regression tests over constructor, toString, valueOf, hasOwnProperty, and __proto__.",
+      "Permission resources come straight from the request body, so naming an Object.prototype member like constructor or toString made the statements lookup return a function rather than undefined. The unknown-resource guard saw a truthy value and evaluation continued into allowedActions.includes(), throwing a TypeError: a 500 and a cheap error oracle where the contract is fail-closed. Requires an own, array-valued statement via Object.hasOwn plus Array.isArray, so inherited or malformed entries degrade to a deny. Seven regression tests over constructor, toString, valueOf, hasOwnProperty, and __proto__.",
     date: "2026-08-21",
     status: "Open",
     url: "https://github.com/better-auth/better-auth/pull/10919",
@@ -120,7 +120,7 @@ export const contributions: Contribution[] = [
     title: "Improve login attempt limiting under concurrent requests",
     target: "wazuh/wazuh",
     description:
-      "Reported privately: the API's brute-force protection incremented its per-IP attempt counter only after credential validation had finished, so concurrent login requests could clear the gate check before any of them were recorded — a TOCTOU window in which the configured attempt limit could be exceeded. The fix moves counting into the check_blocked_ip middleware, ahead of authentication and under the existing asyncio lock, making the gate check and the increment atomic; a new settle_login_attempt() decrements on success so legitimate clients behind NAT or a load balancer aren't eventually blocked. Credited as reporter in the PR; CVE and advisory pending.",
+      "Reported privately: the API's brute-force protection incremented its per-IP attempt counter only after credential validation had finished, so concurrent login requests could clear the gate check before any of them were recorded: a TOCTOU window in which the configured attempt limit could be exceeded. The fix moves counting into the check_blocked_ip middleware, ahead of authentication and under the existing asyncio lock, making the gate check and the increment atomic; a new settle_login_attempt() decrements on success so legitimate clients behind NAT or a load balancer aren't eventually blocked. Credited as reporter in the PR; CVE and advisory pending.",
     date: "2026-08-04",
     status: "Merged",
     url: "https://github.com/wazuh/wazuh/pull/38135",
