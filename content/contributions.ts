@@ -54,6 +54,19 @@ export const TYPE_META: Record<
 export const contributions: Contribution[] = [
   {
     type: "pr",
+    ref: "#849",
+    title:
+      "Guard ext4 extent-tree parsing against out-of-bounds reads on malformed images",
+    target: "apple/containerization",
+    description:
+      "Companion to #848 on the same untrusted-input reader. getExtents walked 0..<entries reading fixed 12-byte records with subdata, trusting the entry counts in the on-disk extent headers without checking them against the bytes available — but the inode block region holds only 60 bytes, so a depth-0 header claiming more than four leaves (or a depth-1 header claiming more than four indices, or a leaf block trusting its own header) reads past the buffer and traps the process. Bounds-checks every fixed-size read and throws EXT4.Error.invalidExtents so corruption surfaces rather than silently truncating, and fixes a latent reversed range when reading a leaf header that was benign only because the offset happened to be zero. Decode is extracted into an internal helper so the four new tests can drive crafted inode blocks directly.",
+    date: "2026-08-24",
+    status: "Open",
+    url: "https://github.com/apple/containerization/pull/849",
+    tags: ["swift", "security", "ext4", "memory-safety"],
+  },
+  {
+    type: "pr",
     ref: "#848",
     title:
       "Guard ext4 directory-entry parsing against out-of-bounds reads on malformed images",
