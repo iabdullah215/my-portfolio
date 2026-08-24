@@ -54,6 +54,19 @@ export const TYPE_META: Record<
 export const contributions: Contribution[] = [
   {
     type: "pr",
+    ref: "#848",
+    title:
+      "Guard ext4 directory-entry parsing against out-of-bounds reads on malformed images",
+    target: "apple/containerization",
+    description:
+      "An ext4 image is untrusted input, but EXT4Reader.getDirEntries read at attacker-controlled offsets without bounds checks: the fixed 8-byte header was loaded whenever offset < block length, so a crafted recordLength landing 1–7 bytes from the end ran past the buffer, and the entry name was read using a nameLength taken straight from the image and never validated. Data.subdata traps on an out-of-range slice, so a malformed image is a SIGTRAP denial of service against any caller listing a directory. Adds two guards that break out of the parse loop like the adjacent recordLength check, plus four tests — one well-formed regression case and three malformed blocks that each crash the reader without the fix.",
+    date: "2026-08-24",
+    status: "Open",
+    url: "https://github.com/apple/containerization/pull/848",
+    tags: ["swift", "security", "ext4", "memory-safety"],
+  },
+  {
+    type: "pr",
     ref: "#10919",
     title: "Deny inherited object members in access-control checks instead of throwing",
     target: "better-auth/better-auth",
