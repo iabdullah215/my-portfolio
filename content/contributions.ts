@@ -134,7 +134,7 @@ export const contributions: Contribution[] = [
     target: "caddyserver/caddy",
     description:
       "Fix for issue #7909: RemoteAdmin's access-control check did a lexical prefix match against the raw, un-normalized request path, so /pki/ca/prod/../../../../load satisfied a prefix scoped to /pki/ca/prod. Cleans both the request path and the allowed path with path.Clean before the segment-boundary check, keeping existing semantics (/pki still doesn't match /pkisecret). Includes regression tests for dot-dot, encoded, sibling, collapsed-slash, and trailing-slash traversal.",
-    date: "2026-07-30",
+    date: "2026-08-25",
     status: "Merged",
     url: "https://github.com/caddyserver/caddy/pull/7910",
     tags: ["go", "security", "hardening"],
