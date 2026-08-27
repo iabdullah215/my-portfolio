@@ -3,7 +3,7 @@
 // misc contributions) — not long-form posts. Edit this array to add entries;
 // the page reads it directly. Newest `date` renders first.
 
-export type ContributionType = "cve" | "pr" | "issue" | "contrib";
+export type ContributionType = "cve" | "advisory" | "pr" | "issue" | "contrib";
 
 export interface Contribution {
   /** Drives the badge colour + the "All / CVE / PR / Issue" filter. */
@@ -36,6 +36,10 @@ export const TYPE_META: Record<
     label: "CVE",
     badge: "border-red-400/40 bg-red-400/10 text-red-400",
   },
+  advisory: {
+    label: "Advisory",
+    badge: "border-orange-400/40 bg-orange-400/10 text-orange-400",
+  },
   pr: {
     label: "PR",
     badge: "border-accent/40 bg-accent/10 text-accent",
@@ -52,6 +56,31 @@ export const TYPE_META: Record<
 
 // --- Entries -----------------------------------------------------------------
 export const contributions: Contribution[] = [
+  {
+    type: "advisory",
+    ref: "GHSA-f2v7-35mm-3hx7",
+    title:
+      "manager/maven-wrapper: Command injection via unescaped distributionType",
+    target: "renovatebot/renovate",
+    description:
+      "Reported privately: the Maven Wrapper manager took distributionType straight out of a repository's maven/maven-wrapper.properties and interpolated it into the command Renovate executes, without escaping. Under binarySource=docker a crafted value such as \"script; cp /etc/passwd /tmp/passwd\" breaks out of the intended command and runs arbitrary code as the Renovate process user, so any repository Renovate is pointed at can execute code on a self-hosted bot. CWE-78, CVSS 7.8 High. Fixed in 44.14.7, and in 15.4.0 / 10.4.0 for the Mend editions.",
+    date: "2026-08-27",
+    status: "Published",
+    url: "https://github.com/renovatebot/renovate/security/advisories/GHSA-f2v7-35mm-3hx7",
+    tags: ["typescript", "security", "command-injection", "cwe-78"],
+  },
+  {
+    type: "advisory",
+    ref: "GHSA-v85g-rq5w-c46q",
+    title: "manager/mix: Command injection via unescaped organization",
+    target: "renovatebot/renovate",
+    description:
+      "Reported privately: the Mix manager builds its hex authentication command from the organization parsed out of a private dependency's package name and never escapes it, so a name like \"private_package:evil --key leaked_or_arbitrary\" injects extra arguments into the command and, under binarySource=docker, arbitrary shell metacharacters. Enough to leak the organization key or run commands as the Renovate process user, though a conformant Mix registry would reject such a package name, which keeps practical exploitation to an insider scenario. CVSS 7.0 High. Fixed in 44.14.7 alongside GHSA-f2v7-35mm-3hx7.",
+    date: "2026-08-27",
+    status: "Published",
+    url: "https://github.com/renovatebot/renovate/security/advisories/GHSA-v85g-rq5w-c46q",
+    tags: ["typescript", "security", "command-injection", "cwe-78"],
+  },
   {
     type: "pr",
     ref: "#849",

@@ -12,7 +12,13 @@ import {
 
 // "All" plus the concrete types, in display order. Only show a type filter if
 // at least one entry uses it.
-const TYPE_ORDER: ContributionType[] = ["cve", "pr", "issue", "contrib"];
+const TYPE_ORDER: ContributionType[] = [
+  "cve",
+  "advisory",
+  "pr",
+  "issue",
+  "contrib",
+];
 
 export default function ContributionsPage() {
   const [selectedType, setSelectedType] = useState<"All" | ContributionType>(
@@ -40,7 +46,8 @@ export default function ContributionsPage() {
         Contributions
       </h1>
       <p className="text-lg text-muted-foreground mb-6">
-        CVEs, pull requests, issues, and other open-source contributions.
+        CVEs, advisories, pull requests, issues, and other open-source
+        contributions.
       </p>
 
       {/* Type filter — mirrors the blog's chip styling */}
