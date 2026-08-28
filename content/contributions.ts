@@ -57,6 +57,32 @@ export const TYPE_META: Record<
 // --- Entries -----------------------------------------------------------------
 export const contributions: Contribution[] = [
   {
+    type: "issue",
+    ref: "#38684",
+    title:
+      "Agent HTTPS transport defaults to verification_mode none, so a default install performs no TLS certificate verification",
+    target: "wazuh/wazuh",
+    description:
+      "The 5.x agent's HTTPS stack is its only transport, and config.c sets verification_mode to AGENT_VERIFY_NONE explicitly, which resolves to CURLOPT_SSL_VERIFYPEER and CURLOPT_SSL_VERIFYHOST both 0. No shipped agent template carries an <ssl> block, so that is the posture most agents would run with: anyone on the agent-to-manager path can terminate TLS as the manager with no credentials, read all telemetry, force re-enrollment to write attacker-chosen keys, and reach root command execution through an active_response /control task. The manager side already infers a safe mode when a CA is configured without one; the agent side has no equivalent, so configuring certificate_authorities alone silently leaves verification off. Filed as an issue rather than an advisory because the code is unreleased, to keep it from shipping in 5.0.0 GA.",
+    date: "2026-08-28",
+    status: "Open",
+    url: "https://github.com/wazuh/wazuh/issues/38684",
+    tags: ["c", "security", "tls", "insecure-defaults"],
+  },
+  {
+    type: "issue",
+    ref: "#38683",
+    title:
+      "remoted /download serves any group's merged.mg to any authenticated agent, no membership check",
+    target: "wazuh/wazuh",
+    description:
+      "The new remoted POST /download authenticates the calling agent but never checks that it belongs to the group it asks for: resource_id comes from the request body and is joined into the served path verbatim, and locateResource has no agent identity in its signature to check against. merged.mg is the concatenation of a group's shared folder including agent.conf, which routinely holds AWS keys, Azure application keys, and database passwords, so one compromised low-value endpoint yields every other group's centralized configuration and its embedded credentials. Legacy remoted derived the group server side from the authenticated key; the membership check was written and then removed during implementation. Path containment holds up, the gap is purely authorization. Filed as an issue rather than an advisory because the code is unreleased.",
+    date: "2026-08-28",
+    status: "Open",
+    url: "https://github.com/wazuh/wazuh/issues/38683",
+    tags: ["cpp", "security", "access-control", "idor"],
+  },
+  {
     type: "advisory",
     ref: "GHSA-f2v7-35mm-3hx7",
     title:
