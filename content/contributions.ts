@@ -57,6 +57,18 @@ export const TYPE_META: Record<
 // --- Entries -----------------------------------------------------------------
 export const contributions: Contribution[] = [
   {
+    type: "pr",
+    ref: "#38686",
+    title: "Verify the Fluentd server identity in the fluent-forward module",
+    target: "wazuh/wazuh",
+    description:
+      "Reported privately: the fluent-forward module validated the collector's certificate chain against the configured <ca_file> but never checked that the certificate belonged to the configured <address>, so any certificate issued by that CA was accepted, and it parsed the shared_key_hexdigest out of the server's PONG without ever comparing it, so a collector that did not know the <shared_key> still completed the handshake. Both halves of the server's identity were therefore unauthenticated, leaving forwarded events open to interception by anyone holding a certificate from the same CA. The fix binds <address> as the expected peer name with SSL_set1_host() before SSL_connect(), sends it as SNI when it is not an IP, and adds wm_fluent_check_pong() to recompute the SHA-512 digest over the PING salt, hostname, HELO nonce, and shared key. Credited as reporter in the PR.",
+    date: "2026-08-28",
+    status: "Merged",
+    url: "https://github.com/wazuh/wazuh/pull/38686",
+    tags: ["c", "security", "tls", "authentication"],
+  },
+  {
     type: "issue",
     ref: "#38684",
     title:
