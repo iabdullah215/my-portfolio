@@ -57,6 +57,45 @@ export const TYPE_META: Record<
 // --- Entries -----------------------------------------------------------------
 export const contributions: Contribution[] = [
   {
+    type: "cve",
+    ref: "CVE-2026-71184",
+    title:
+      "Gitea Actions: fork pull request approval bypass via pull_request_review_comment (missing WithPullRequest)",
+    target: "go-gitea/gitea",
+    description:
+      "GHSA-7w2r-xwp6-mh6c. Gitea has required maintainer approval before running fork pull request workflows since 1.20.0, but the review notifier — unlike its sibling review-request notifier — never attached the pull request to the notification it emitted, so a run triggered by pull_request_review_comment carried no PR context and the gate concluded the run was not from a fork. An attacker only had to fork the repository, open a pull request, and leave a review comment: no Actions permissions, no runner of their own. Attacker-controlled workflow code then executed unapproved on the base repository's runners, which on a self-hosted runner means code execution as the runner user with reach into its secrets. CWE-863, CVSS 8.8 High. Fixed in 1.27.3 via #39005 and #39018; credited as analyst.",
+    date: "2026-08-29",
+    status: "Published",
+    url: "https://github.com/go-gitea/gitea/security/advisories/GHSA-7w2r-xwp6-mh6c",
+    tags: ["go", "security", "ci-cd", "cwe-863"],
+  },
+  {
+    type: "cve",
+    ref: "CVE-2026-66874",
+    title:
+      "A fork pull request author can satisfy a required Actions status check without any workflow running",
+    target: "go-gitea/gitea",
+    description:
+      "GHSA-5xp7-r6cr-39ff. Gitea writes a synthetic skipped commit status for workflows excluded by their own filters, and a combined status treats skipped as success. For a fork pull request the workflow definition is read from the author's HEAD commit, so the attacker controls it: define a workflow whose name matches a required check context, give it filters that can never match, and Gitea posts the skipped status itself. The required check goes green with no workflow run, no runner, no write access, and no approval, defeating branch protection and any organization-mandated workflow standing between the pull request and a protected branch. CWE-284 / CWE-807, CVSS 6.5 Moderate. Reported privately, fixed in 1.27.3.",
+    date: "2026-08-29",
+    status: "Published",
+    url: "https://github.com/go-gitea/gitea/security/advisories/GHSA-5xp7-r6cr-39ff",
+    tags: ["go", "security", "ci-cd", "branch-protection"],
+  },
+  {
+    type: "cve",
+    ref: "CVE-2026-78433",
+    title:
+      "Attachments created before the January 2026 cutoff skip the cross repository check, serving private attachments through any public repository's path",
+    target: "go-gitea/gitea",
+    description:
+      "GHSA-frpv-2xgv-wxpq. routers/web/repo/attachment.go carries a guard that rejects an attachment fetched through a repository other than the one owning it, but the guard is gated on the attachment's creation timestamp rather than on whether the owning-repository ID is unset, the way the equivalent checks elsewhere are written. Since a migration backfills that ID on upgrade, the pre-16-January-2026 exemption protects nothing legitimate and instead lets permission be evaluated against the repository named in the request URL. Anyone who knows an attachment UUID can pull a private repository's issue attachments, pull request files, and release assets through a public repository's path, unauthenticated, and the draft-release and token-scope checks downstream inherit the same wrong repository. CWE-639 / CWE-863, CVSS 5.9 Moderate. Reported privately, fixed in 1.27.3.",
+    date: "2026-08-29",
+    status: "Published",
+    url: "https://github.com/go-gitea/gitea/security/advisories/GHSA-frpv-2xgv-wxpq",
+    tags: ["go", "security", "access-control", "cwe-639"],
+  },
+  {
     type: "pr",
     ref: "#38686",
     title: "Verify the Fluentd server identity in the fluent-forward module",
