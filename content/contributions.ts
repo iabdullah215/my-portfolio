@@ -57,6 +57,19 @@ export const TYPE_META: Record<
 // --- Entries -----------------------------------------------------------------
 export const contributions: Contribution[] = [
   {
+    type: "advisory",
+    ref: "GHSA-f689-h8m7-3jp2",
+    title:
+      "ContainerizationOCI accepts unvalidated OCI descriptor digests, enabling path traversal in the local content store",
+    target: "apple/containerization",
+    description:
+      "Descriptor.digest was a plain String decoded straight out of registry responses by synthesized Codable with no format validation, and trimmingDigestPrefix — the helper used everywhere to turn a digest into a path component — only split on \":\" and returned the remainder verbatim, so sha256:../../etc/hosts came back as ../../etc/hosts. LocalContentStore.get appended that onto blobs/sha256 with URL.appendingPathComponent, which does not collapse \"..\", then opened the result. Every container pull, run, and create reaches the sink through ImageStore+Import's fetch() and getManifestContent(), so one malicious manifest is enough: a compromised or on-path registry gets a file existence and readability oracle on the macOS host, the JSON decode error can echo a fragment of the file's bytes into local logs, and because the read was unbounded a digest pointed at a large or unreadable-to-EOF file exhausts memory. The cache-hit copyItem branch was checked and is not a write primitive — source and destination resolve to the same path and the copy fails EEXIST. High severity, no CVE assigned. Fixed by validating every digest as sha256:<64 lowercase hex> at decode time and again at the content-store sink; patched above containerization 0.41.0 and container 1.3.0. Credited as reporter.",
+    date: "2026-08-30",
+    status: "Published",
+    url: "https://github.com/apple/containerization/security/advisories/GHSA-f689-h8m7-3jp2",
+    tags: ["swift", "security", "path-traversal", "oci"],
+  },
+  {
     type: "cve",
     ref: "CVE-2026-71184",
     title:
