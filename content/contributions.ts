@@ -57,6 +57,32 @@ export const TYPE_META: Record<
 // --- Entries -----------------------------------------------------------------
 export const contributions: Contribution[] = [
   {
+    type: "cve",
+    ref: "CVE-2026-70407",
+    title:
+      "Token scope bypass on GET /api/v1/orgs: the read:organization check ran after the handler that answered the request",
+    target: "go-gitea/gitea",
+    description:
+      "GHSA-ww9q-7j5q-hrv5. Gitea's API routes carry their token scope requirement as middleware, and middleware runs in the order it is listed, so \"/orgs\" registered as m.Get(\"/orgs\", org.GetAll, tokenRequiresScopes(...Organization)) had the two the wrong way round: GetAll answered the request and the scope check it was supposed to sit behind never ran. The sibling POST on the line directly above orders them correctly, which is what made the inversion visible. Any token was therefore enough to enumerate organization metadata visible to its owner — including a token deliberately narrowed to read:misc, exactly the case scopes exist to bound — and a site-admin token additionally returned private and limited organizations, so an integration handed a minimal token could read the whole organization list an operator believed it had been cut off from. CWE-285, Moderate. Fixed in 1.27.3 by putting tokenRequiresScopes ahead of the handler (#39041); the follow-up #39058 swept the same class of gap across package blob access, limited-organization visibility for restricted users, workflow badges, and repository team management. Credited as reporter.",
+    date: "2026-08-31",
+    status: "Published",
+    url: "https://github.com/go-gitea/gitea/security/advisories/GHSA-ww9q-7j5q-hrv5",
+    tags: ["go", "security", "access-control", "cwe-285"],
+  },
+  {
+    type: "advisory",
+    ref: "GHSA-5293-mq8x-g3xj",
+    title:
+      "Malicious OpenAPI documents can cause arbitrary code generation, executed when anyone imports the generated client",
+    target: "openapi-generators/openapi-python-client",
+    description:
+      "The generator builds a Python client by interpolating strings taken straight from an OpenAPI document into Jinja templates, and those templates emitted document-controlled values into docstrings, f-strings, and string literals without escaping them for the context they landed in. A crafted document can therefore close the literal it is placed in and continue as Python source, so the generator writes attacker-chosen code into the client it produces — and that code runs on import, not on any call to the malicious endpoint. Nobody has to invoke the API for it to fire; pointing the generator at a vendor's spec URL and importing the result is the whole chain, which puts CI jobs and developer machines that regenerate clients from third-party specs directly in the blast radius. CWE-94 / CWE-116 / CWE-150, CVSS 4.0 8.4 High, no CVE assigned yet. Fixed in 0.29.1, which routes every interpolated value through a context-specific escaper — safe_for_docstring, in_f_string_literal, in_double_quote_literal, and as_unembedded_code reserved for values that genuinely are code — and strips Unicode control characters from literals; custom templates must be updated to match. Credited as reporter.",
+    date: "2026-08-31",
+    status: "Published",
+    url: "https://github.com/openapi-generators/openapi-python-client/security/advisories/GHSA-5293-mq8x-g3xj",
+    tags: ["python", "security", "code-injection", "cwe-94"],
+  },
+  {
     type: "advisory",
     ref: "GHSA-f689-h8m7-3jp2",
     title:
