@@ -57,19 +57,6 @@ export const TYPE_META: Record<
 // --- Entries -----------------------------------------------------------------
 export const contributions: Contribution[] = [
   {
-    type: "cve",
-    ref: "CVE-2026-70407",
-    title:
-      "Token scope bypass on GET /api/v1/orgs: the read:organization check ran after the handler that answered the request",
-    target: "go-gitea/gitea",
-    description:
-      "Gitea listed the scope check after the handler that answered the request, so GET /api/v1/orgs never enforced read:organization. Any token could list organization metadata, and a site-admin token also returned private and limited orgs. Fixed in 1.27.3.",
-    date: "2026-08-31",
-    status: "Published",
-    url: "https://github.com/go-gitea/gitea/security/advisories/GHSA-ww9q-7j5q-hrv5",
-    tags: ["go", "security", "access-control", "cwe-285"],
-  },
-  {
     type: "advisory",
     ref: "GHSA-5293-mq8x-g3xj",
     title:
@@ -77,7 +64,7 @@ export const contributions: Contribution[] = [
     target: "openapi-generators/openapi-python-client",
     description:
       "The generator interpolated strings from an OpenAPI document into its Jinja templates without escaping, so a crafted document could break out of a literal and write arbitrary Python into the generated client, which then runs on import. CVSS 8.4, fixed in 0.29.1.",
-    date: "2026-08-31",
+    date: "2026-08-30",
     status: "Published",
     url: "https://github.com/openapi-generators/openapi-python-client/security/advisories/GHSA-5293-mq8x-g3xj",
     tags: ["python", "security", "code-injection", "cwe-94"],
@@ -94,6 +81,19 @@ export const contributions: Contribution[] = [
     status: "Published",
     url: "https://github.com/apple/containerization/security/advisories/GHSA-f689-h8m7-3jp2",
     tags: ["swift", "security", "path-traversal", "oci"],
+  },
+  {
+    type: "cve",
+    ref: "CVE-2026-70407",
+    title:
+      "Token scope bypass on GET /api/v1/orgs: the read:organization check ran after the handler that answered the request",
+    target: "go-gitea/gitea",
+    description:
+      "Gitea listed the scope check after the handler that answered the request, so GET /api/v1/orgs never enforced read:organization. Any token could list organization metadata, and a site-admin token also returned private and limited orgs. Fixed in 1.27.3.",
+    date: "2026-08-29",
+    status: "Published",
+    url: "https://github.com/go-gitea/gitea/security/advisories/GHSA-ww9q-7j5q-hrv5",
+    tags: ["go", "security", "access-control", "cwe-285"],
   },
   {
     type: "cve",
@@ -199,6 +199,19 @@ export const contributions: Contribution[] = [
   },
   {
     type: "pr",
+    ref: "#7910",
+    title:
+      "Normalize request path in remote admin access-control check (defense-in-depth)",
+    target: "caddyserver/caddy",
+    description:
+      "Fix for issue #7909. Cleans both the request path and the allowed path before the segment-boundary check, so dot-dot traversal can no longer satisfy an admin prefix. Regression tests cover encoded, sibling, and collapsed-slash cases.",
+    date: "2026-08-25",
+    status: "Merged",
+    url: "https://github.com/caddyserver/caddy/pull/7910",
+    tags: ["go", "security", "hardening"],
+  },
+  {
+    type: "pr",
     ref: "#849",
     title:
       "Guard ext4 extent-tree parsing against out-of-bounds reads on malformed images",
@@ -272,19 +285,6 @@ export const contributions: Contribution[] = [
     tags: ["python", "security", "race-condition", "auth"],
   },
   {
-    type: "pr",
-    ref: "#7910",
-    title:
-      "Normalize request path in remote admin access-control check (defense-in-depth)",
-    target: "caddyserver/caddy",
-    description:
-      "Fix for issue #7909. Cleans both the request path and the allowed path before the segment-boundary check, so dot-dot traversal can no longer satisfy an admin prefix. Regression tests cover encoded, sibling, and collapsed-slash cases.",
-    date: "2026-08-25",
-    status: "Merged",
-    url: "https://github.com/caddyserver/caddy/pull/7910",
-    tags: ["go", "security", "hardening"],
-  },
-  {
     type: "issue",
     ref: "#7909",
     title:
@@ -292,7 +292,7 @@ export const contributions: Contribution[] = [
     target: "caddyserver/caddy",
     description:
       "RemoteAdmin's access-control check did a lexical prefix match on the raw request path, so /pki/ca/prod/../../../../load satisfied a prefix scoped to /pki/ca/prod. Not exploitable today, but authorization should not rely on the router. Resolved by #7910.",
-    date: "2026-07-30",
+    date: "2026-07-27",
     status: "Resolved",
     url: "https://github.com/caddyserver/caddy/issues/7909",
     tags: ["go", "security", "hardening"],
