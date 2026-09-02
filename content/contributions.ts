@@ -57,6 +57,18 @@ export const TYPE_META: Record<
 // --- Entries -----------------------------------------------------------------
 export const contributions: Contribution[] = [
   {
+    type: "pr",
+    ref: "#38692",
+    title: "Sanitize the Fluentd server strings written to the log",
+    target: "wazuh/wazuh",
+    description:
+      "The fluent-forward module logged three strings straight from the collector — the PONG rejection reason and server hostname, and unexpected HELO keys — without filtering, so a rogue collector could embed CRLF and forge entries in ossec.log. Credited as reporter.",
+    date: "2026-09-01",
+    status: "Merged",
+    url: "https://github.com/wazuh/wazuh/pull/38692",
+    tags: ["c", "security", "log-injection", "crlf"],
+  },
+  {
     type: "advisory",
     ref: "GHSA-5293-mq8x-g3xj",
     title:
