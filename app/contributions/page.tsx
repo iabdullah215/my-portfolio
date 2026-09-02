@@ -4,6 +4,7 @@ import { useState } from "react";
 import { track } from "@vercel/analytics";
 import { SpotlightCard } from "@/components/spotlight-card";
 import { Reveal } from "@/components/reveal";
+import { ContributionStats } from "@/components/contribution-stats";
 import {
   contributions,
   TYPE_META,
@@ -24,6 +25,7 @@ export default function ContributionsPage() {
   const [selectedType, setSelectedType] = useState<"All" | ContributionType>(
     "All"
   );
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
 
   const availableTypes = TYPE_ORDER.filter((type) =>
     contributions.some((c) => c.type === type)
@@ -31,6 +33,7 @@ export default function ContributionsPage() {
 
   const filtered = contributions
     .filter((c) => selectedType === "All" || c.type === selectedType)
+    .filter((c) => selectedProject === null || c.target === selectedProject)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const chipClass = (active: boolean) =>
@@ -50,6 +53,14 @@ export default function ContributionsPage() {
         contributions.
       </p>
 
+      <ContributionStats
+        items={contributions}
+        selectedType={selectedType}
+        selectedProject={selectedProject}
+        onSelectType={setSelectedType}
+        onSelectProject={setSelectedProject}
+      />
+
       {/* Type filter — mirrors the blog's chip styling */}
       {availableTypes.length > 0 && (
         <div className="not-prose mb-3 flex flex-wrap items-center gap-2">
@@ -67,6 +78,24 @@ export default function ContributionsPage() {
               {type === "All" ? "All" : TYPE_META[type].label}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Active project filter — set from the chart, clearable from here too */}
+      {selectedProject && (
+        <div className="not-prose mb-3 flex flex-wrap items-center gap-2">
+          <span className="font-mono text-xs text-muted-foreground">
+            project:
+          </span>
+          <button
+            type="button"
+            onClick={() => setSelectedProject(null)}
+            className="flex items-center gap-1.5 rounded-full border border-accent/60 bg-accent/15 px-3 py-1 font-mono text-xs text-accent transition-colors hover:border-accent"
+            aria-label={`Clear the ${selectedProject} filter`}
+          >
+            {selectedProject}
+            <span aria-hidden="true">✕</span>
+          </button>
         </div>
       )}
 
