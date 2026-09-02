@@ -3,7 +3,10 @@ module.exports = {
   content: [
     "./app/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
-    "./content/**/*.{md,mdx}",
+    // .ts as well as .md/.mdx: content/contributions.ts holds the per-type badge
+    // classes, and without this glob Tailwind never emits them — the badges fall
+    // back to plain foreground text.
+    "./content/**/*.{ts,tsx,md,mdx}",
   ],
   darkMode: ["class"],
   theme: {

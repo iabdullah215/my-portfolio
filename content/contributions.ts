@@ -28,29 +28,44 @@ export interface Contribution {
 
 // Labels + accent hues per type. Colours are Tailwind utility classes so they
 // respect light/dark automatically.
+//
+// The -400 steps carry the badge label comfortably on the near-black dark
+// surface (6.5:1 and up) but collapse against white — yellow-400 lands at
+// 1.47:1, orange-400 at 2.09:1, well under the 4.5:1 that 11px uppercase text
+// needs. Light mode therefore uses darker steps of the same hue and dark mode
+// keeps the originals. Yellow takes an extra step because it is the brightest
+// hue of the set and -700 alone still reads at 4.32:1.
 export const TYPE_META: Record<
   ContributionType,
   { label: string; badge: string }
 > = {
   cve: {
     label: "CVE",
-    badge: "border-red-400/40 bg-red-400/10 text-red-400",
+    badge:
+      "border-red-700/40 bg-red-700/10 text-red-700 dark:border-red-400/40 dark:bg-red-400/10 dark:text-red-400",
   },
   advisory: {
     label: "Advisory",
-    badge: "border-orange-400/40 bg-orange-400/10 text-orange-400",
+    badge:
+      "border-orange-800/40 bg-orange-800/10 text-orange-800 dark:border-orange-400/40 dark:bg-orange-400/10 dark:text-orange-400",
   },
   pr: {
+    // emerald-700 is the accent hue one step darker: --accent is emerald-600 in
+    // light, which only reaches 3.3:1 behind the badge tint. Border and fill
+    // still track the token, so a change of accent still carries.
     label: "PR",
-    badge: "border-accent/40 bg-accent/10 text-accent",
+    badge:
+      "border-accent/40 bg-accent/10 text-emerald-700 dark:text-accent",
   },
   issue: {
     label: "Issue",
-    badge: "border-yellow-400/40 bg-yellow-400/10 text-yellow-400",
+    badge:
+      "border-yellow-800/40 bg-yellow-800/10 text-yellow-800 dark:border-yellow-400/40 dark:bg-yellow-400/10 dark:text-yellow-400",
   },
   contrib: {
     label: "Contrib",
-    badge: "border-sky-400/40 bg-sky-400/10 text-sky-400",
+    badge:
+      "border-sky-700/40 bg-sky-700/10 text-sky-700 dark:border-sky-400/40 dark:bg-sky-400/10 dark:text-sky-400",
   },
 };
 
