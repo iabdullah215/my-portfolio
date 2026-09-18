@@ -73,6 +73,30 @@ export const TYPE_META: Record<
 export const contributions: Contribution[] = [
   {
     type: "pr",
+    ref: "#932",
+    title: "Stop filling the disk when pulling images with oversized blobs",
+    target: "apple/containerization",
+    description:
+      "Blob downloads accepted a Content-Length larger than the descriptor and never compared the bytes actually received against it, so the write never stopped. Downloads are now bounded by the descriptor size and an oversized body is refused before anything lands on disk. Credited as reporter.",
+    date: "2026-09-17",
+    status: "Open",
+    url: "https://github.com/apple/containerization/pull/932",
+    tags: ["swift", "security", "resource-exhaustion", "oci"],
+  },
+  {
+    type: "pr",
+    ref: "#931",
+    title: "Stop leaking disk space when unpacking images with zstd layers",
+    target: "apple/containerization",
+    description:
+      "Uncompressed zstd layers were written to temp directories with no size limit, and those directories were left behind when decompressing a later layer failed or was cancelled. zstd layers now stream through decompression, so no copy is written to disk. Credited as reporter.",
+    date: "2026-09-17",
+    status: "Open",
+    url: "https://github.com/apple/containerization/pull/931",
+    tags: ["swift", "security", "resource-exhaustion", "zstd"],
+  },
+  {
+    type: "pr",
     ref: "#38692",
     title: "Sanitize the Fluentd server strings written to the log",
     target: "wazuh/wazuh",
@@ -103,7 +127,7 @@ export const contributions: Contribution[] = [
       "ContainerizationOCI accepts unvalidated OCI descriptor digests, enabling path traversal in the local content store",
     target: "apple/containerization",
     description:
-      "OCI descriptor digests were never validated, and the helper that turns a digest into a path only stripped the prefix, so sha256:../../etc/hosts escaped the content store. A malicious registry got a file read oracle on the macOS host. Fixed in containerization 0.41.0.",
+      "OCI descriptor digests were never validated, and the helper that turns a digest into a path only stripped the prefix, so sha256:../../etc/hosts escaped the content store. A malicious registry got a file read oracle on the macOS host. Fixed in containerization 0.42.0.",
     date: "2026-08-30",
     status: "Published",
     url: "https://github.com/apple/containerization/security/advisories/GHSA-f689-h8m7-3jp2",
@@ -180,9 +204,9 @@ export const contributions: Contribution[] = [
       "Agent HTTPS transport defaults to verification_mode none, so a default install performs no TLS certificate verification",
     target: "wazuh/wazuh",
     description:
-      "The 5.x agent sets verification_mode to none and no shipped template overrides it, so a default install does no TLS verification at all. Anyone on the path can impersonate the manager, force re-enrollment, and reach root through active_response.",
+      "The 5.x agent sets verification_mode to none and no shipped template overrides it, so a default install does no TLS verification at all. Anyone on the path can impersonate the manager, force re-enrollment, and reach root through active_response. Resolved by #38786.",
     date: "2026-08-28",
-    status: "Open",
+    status: "Resolved",
     url: "https://github.com/wazuh/wazuh/issues/38684",
     tags: ["c", "security", "tls", "insecure-defaults"],
   },
@@ -193,9 +217,9 @@ export const contributions: Contribution[] = [
       "remoted /download serves any group's merged.mg to any authenticated agent, no membership check",
     target: "wazuh/wazuh",
     description:
-      "remoted's POST /download authenticates the calling agent but never checks that it belongs to the group it asks for, so any agent can fetch any group's merged.mg and the credentials inside its agent.conf. Filed as an issue since the code is unreleased.",
+      "remoted's POST /download authenticates the calling agent but never checks that it belongs to the group it asks for, so any agent can fetch any group's merged.mg and the credentials inside its agent.conf. Filed as an issue since the code is unreleased. Resolved by #39144.",
     date: "2026-08-28",
-    status: "Open",
+    status: "Resolved",
     url: "https://github.com/wazuh/wazuh/issues/38683",
     tags: ["cpp", "security", "access-control", "idor"],
   },
