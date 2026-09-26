@@ -85,6 +85,11 @@ const certifications = [
     imageSrc: "/Certs/Qualys2.png",
     description: "Qualys",
   },
+  {
+    title: "Certified Offensive AI Expert",
+    imageSrc: "/Certs/COAE.png",
+    description: "By HackTheBox",
+  },
 ];
 
 export default function Cert() {
