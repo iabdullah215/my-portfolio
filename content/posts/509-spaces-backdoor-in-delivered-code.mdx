@@ -1,0 +1,234 @@
+---
+title: "509 Spaces: How a Backdoor Hid in a Delivered Codebase"
+description: "A config file that should have been 100 bytes arrived at 32,404. Behind 509 spaces on line 11 sat an obfuscated loader that pulled its command and control address off the Ethereum blockchain and ran on every build."
+date: "2026-10-02"
+category: "Security Research"
+tags:
+  - malware
+  - supply-chain
+  - nodejs
+  - incident-response
+---
+
+A codebase got delivered by an outside developer. Next.js, Tailwind, nothing exotic. I was doing the kind of review you do before you run anything: read the config, skim the dependencies, look at the commit history. Ten minutes in I found a backdoor that hands remote code execution to a stranger on every single build, and it had been sitting in the first and only commit of the delivered work.
+
+The thing that gave it away was not clever analysis. It was a file size.
+
+> Everything below is reconstructed from static reading. I never ran the project, and I never contacted the attacker's server. If you are reading this because you think you have the same thing, do not run `npm install`, `npm run dev`, or `npm run build` to find out.
+
+## The File That Was Too Big
+
+A Tailwind v4 PostCSS config is boilerplate. It declares one plugin and exports. Mine are about 100 bytes. This one:
+
+```bash
+$ wc -l -c postcss.config.mjs
+      11   32404 postcss.config.mjs
+```
+
+Eleven lines and 32,404 bytes. Eleven lines is right for that file. Thirty two kilobytes is not. A config file with a three hundred to one ratio of bytes to lines means one of those lines is enormous.
+
+Open it in an editor and you see nothing wrong at all.
+
+![A PostCSS config open in Sublime Text, showing eleven ordinary lines of Tailwind configuration and nothing else](/static/images/backdoor-config-normal.png)
+
+That is the entire file as far as any human reviewer can tell. Eleven lines, correct Tailwind v4 plugin block, clean export on line 11. The scroll bar gives nothing away. There is no suspicious import sitting in the middle of the file, no base64 blob staring back at you, no minified wall of code.
+
+## Line 11
+
+Line 11 is 32,242 characters long. It begins with `export default config;`, which is exactly what you expect to see. Then it continues with **509 space characters**. Then 31,713 characters of obfuscated JavaScript.
+
+| Line | Length | Content |
+| --- | --- | --- |
+| 1 to 10 | 0 to 47 chars | Normal Tailwind configuration |
+| 11 | 32,242 chars | `export default config;` + 509 spaces + payload |
+
+Five hundred and nine spaces is not a random number. It is enough to push the payload past the right edge of any editor window at any reasonable font size, on any laptop. Your eye reads `export default config;` and stops, because as far as your eye is concerned the line is over. The payload starts at column 530, somewhere off in the dark past the end of the viewport.
+
+I measured it directly rather than trusting the editor:
+
+```text
+payload starts at col 530
+visible text before payload: [exportdefaultconfig;]
+space run length: 509
+```
+
+This defeats more than just reading. In a diff, a trailing run of whitespace followed by content on an already modified line registers as a whitespace change. In a pull request view it collapses. In a code review it is a blank space after a normal statement. The padding is the whole trick, and it costs the attacker nothing.
+
+The payload is visible the moment you look at the file with anything other than an editor. Here it is in a plain macOS Get Info preview pane, which wraps instead of scrolling:
+
+![A macOS Get Info panel showing the config file at 32 KB, with the Preview pane revealing a wall of obfuscated JavaScript beginning with a campaign identifier string](/static/images/backdoor-payload-preview.png)
+
+Two things in that screenshot matter. The file size reads **32 KB** in a context no attacker can pad away, and the preview pane wraps the long line, so the payload has nowhere to hide. It opens with a campaign identifier and then goes straight into hex-mangled variable soup:
+
+```js
+global.i = 'A10-*16110';
+const _0x32ebc7=_0x5ce2;(function(_0x20982f,_0x3f1f0b){const _0x2f1247=_0x5ce2, ...
+```
+
+The obfuscation is standard string-array-with-rotation output. It is not interesting in itself and it is not meant to stop analysis, only to stop a glance.
+
+## Why a Config File Is a Good Place to Hide
+
+Line 1 of the file is this:
+
+```js
+import { createRequire } from 'module';
+```
+
+A Tailwind v4 PostCSS config has no use for `createRequire`. None. It is there for one reason: the file is an ES module, so it has no `require`, and the hidden code needs `require` to reach `http`, `https`, `zlib`, and `child_process`. That single import on line 1 is the payload's bootstrap, sitting in plain sight at the top of the file where it reads as ordinary tooling noise.
+
+The placement is the other half of it. Next.js loads `postcss.config.mjs` inside the build process. Not in a sandbox, not in a worker with reduced privileges, but in process, with the full privileges of whoever ran the command. On a developer laptop that is your user account, your SSH keys, your cloud credentials, your browser profile. On CI that is the build runner and whatever secrets you injected into it.
+
+No one audits their PostCSS config. That is the point.
+
+## It Reads Its Orders Off the Blockchain
+
+Here is where it stopped being an ordinary dropper. I went looking for the hardcoded server address so I could note the IOC, and there is not one.
+
+The code resolves its command and control address from the Ethereum blockchain at runtime:
+
+```text
+npm run dev / npm run build
+  -> reads current Ethereum block height via public RPC providers
+  -> finds the newest transaction from
+     0xa322e5f3d311d3080e6f0121063e9adc2490ef1a
+  -> reads that transaction's destination field as raw bytes
+     bytes 0-3 = first server IP, bytes 4-7 = second server IP
+  -> HTTP GET http://<IP>:443/0x/cls  and  /0x/ls
+  -> payload arrives in the x-payload-b64 response header
+  -> base64 decode, then XOR decrypt
+  -> executes it twice: eval(), and a detached background process
+```
+
+The attacker publishes a transaction from an account they control. The destination field of that transaction, which is normally a wallet address, is read as raw bytes instead. The first four bytes are an IP address. The next four are a fallback. The code polls the chain, takes the newest transaction from that account, and dials whatever address it finds.
+
+A couple of details on the delivery mechanics. The payload does not come back in the response body, it comes back in an `x-payload-b64` response header, which stays out of body-oriented logging. The request carries a `Sec-V` header containing the campaign identifier, which is also the `global.i = 'A10-*16110'` string sitting at the front of the payload. The port is 443 but the scheme is plain HTTP, so it looks like TLS to a firewall rule written on port numbers and is readable to anyone actually inspecting bytes.
+
+## Three Things That Make It Worse
+
+**The operator can move servers whenever they like.** This is the real reason for the blockchain indirection. Because the address lives on a public chain instead of inside the file, blocking the IP does nothing and seizing a domain does nothing. The operator publishes one transaction and every infected machine on earth follows them to the new address on its next build. You cannot take down the channel. There is no domain to seize and no server whose loss breaks the link.
+
+**It survives the build.** The code executes the downloaded payload twice. Once through `eval()`, and once as a detached process:
+
+```js
+spawn('node', ['-e', ...], { detached: true, stdio: 'ignore', windowsHide: true })
+```
+
+Read the options. `detached` means it outlives the parent, so it is still running after your build finishes and after you close the terminal. `stdio: 'ignore'` means it produces no output anywhere. `windowsHide` means no console window appears on Windows. You run `npm run build` once, it completes normally, and something is still running.
+
+**It hands over the whole machine.** Before executing the payload, the code sets:
+
+```js
+global.r = require;
+global.m = module;
+```
+
+That gives the downloaded code, which is code the operator can change at any time without touching your repository, complete access to the file system, the network, and process control. Whatever arrives in that header gets the same reach as the build itself.
+
+And every network and execution step is wrapped in an empty error handler. If the chain lookup fails, if the server is down, if the payload is malformed, nothing is logged and nothing throws. The build succeeds. The failure mode is designed to be silent so that a machine with no network path to the C2 still gives you a clean green build and no reason to look closer.
+
+## Proving It Without Touching Their Server
+
+I wanted to confirm the channel was live, not a dead dropper from some old campaign. The appealing move here is to just curl the address and see what comes back. Do not do that. It confirms an infected host to the operator and it puts you in contact with an active attacker.
+
+The blockchain indirection cuts the other way too. Because the control channel is published on a public ledger, I could read the operator's activity from a public block explorer without sending them a single packet.
+
+| Block | Timestamp (UTC) | Transaction destination | Decoded server |
+| --- | --- | --- | --- |
+| 26081000 | 2026-09-29 05:21:59 | `0x5bdab7ae5bdab7ae68656c6c6f6970626f742121` | 91.218.183.174 |
+| 26079999 | 2026-09-29 02:01:11 | same | 91.218.183.174 |
+| 26077002 | 2026-09-28 15:58:59 | same | 91.218.183.174 |
+
+Refreshes land every 1,000 blocks, which matches the interval the code expects. The most recent was hours before I looked. This channel is maintained on a schedule by someone who is still paying attention to it.
+
+Decoding that destination field is worth doing by hand, because it is what turns a suspicion into a fact:
+
+```text
+5b da b7 ae  ->  91.218.183.174
+5b da b7 ae  ->  91.218.183.174   (fallback, same host)
+68 65 6c 6c 6f 69 70 62 6f 74 21 21  ->  "helloipbot!!"
+```
+
+`0x5b` is 91, `0xda` is 218, `0xb7` is 183, `0xae` is 174. The first eight bytes decode to the same server twice. And then the trailing bytes, which the code never reads, spell `helloipbot!!` in ASCII. That is operator padding. Someone typed a greeting into the dead space of a field they were using as a data channel, which is the clearest possible confirmation that the field is deliberate and not an artifact of a malformed transaction.
+
+## It Was There From the Beginning
+
+The last question was whether this was injected into a legitimate codebase somewhere along the way, or whether it shipped that way.
+
+```bash
+$ git log --format='%H %ai %an <%ae> %s' --all
+34acca1 2026-09-22 05:26:18 +0500  [redacted] Initial commit
+```
+
+One commit. The entire history of the delivered work is a single initial commit, and the backdoor is in it:
+
+```bash
+$ git show 34acca1:postcss.config.mjs | wc -c
+   32404
+```
+
+There is no clean version in the history to roll back to. There is no commit where someone added it, which means there is no point in asking when the project was compromised. The project was never not compromised. The file was 32,404 bytes the moment the repository existed, and it was still that size in the remote when I checked, last pushed the day after the initial commit.
+
+That also settles the question of whether this was an accident. An insecure dependency is an accident. A leaked key is an accident. Thirty one thousand characters of obfuscated loader, padded with 509 spaces so it falls off the edge of the screen, resolving its C2 from a blockchain so it cannot be taken down, is not an accident. It is working software, and somebody wrote it on purpose to not be seen.
+
+On the machine I reviewed, `node_modules` was absent, so the build had most likely never run and the code had most likely never executed. That is the best news in this whole story, and it is also the narrowest. It says nothing about any other machine that opened the project.
+
+## Indicators
+
+Attacker-side infrastructure, published so other people can hunt it. The delivery-specific details, which identify the client rather than the campaign, are left out.
+
+| Type | Value |
+| --- | --- |
+| Server | `91.218.183.174` |
+| URLs | `http://91.218.183.174:443/0x/cls` and `/0x/ls` |
+| Blockchain account | `0xa322e5f3d311d3080e6f0121063e9adc2490ef1a` |
+| Campaign identifier | `A10-*16110`, sent as a `Sec-V` request header |
+| Payload header | `x-payload-b64` |
+| File signature | `postcss.config.mjs` larger than about 1 KB |
+| Process signature | Detached `node -e` process with no terminal |
+
+The strongest detection signal is not any of those values, because the operator can change all of them. It is this: the project has no blockchain functionality whatsoever. Any outbound traffic from a build to an Ethereum RPC provider is abnormal and means the code has run.
+
+```text
+1rpc.io
+eth.drpc.org
+ethereum-rpc.publicnode.com
+eth-mainnet.public.blastapi.io
+eth.blockscout.com
+```
+
+A Tailwind site has no business resolving any of those. If you see one in egress logs from a build runner, you have your answer.
+
+## How to Check Your Own Projects
+
+None of this needs tooling. The checks that found it are one-liners.
+
+Look for config files that are bigger than config files should be:
+
+```bash
+find . -name '*.config.*' -not -path './node_modules/*' -size +1k -exec ls -l {} \;
+```
+
+Look for absurdly long lines anywhere in your tracked source:
+
+```bash
+git grep -n '.\{500,\}' -- '*.js' '*.mjs' '*.ts' '*.json'
+```
+
+Look for long runs of whitespace followed by more content, which is the padding trick itself:
+
+```bash
+git grep -nE ' {100,}\S' -- '*.js' '*.mjs' '*.cjs' '*.ts'
+```
+
+And for anything handed to you by someone else, read the config files before you run the install. All of them, including the boring ones. Especially the boring ones.
+
+## What I Took Away From This
+
+The sophisticated part of this was not the code. The obfuscation was off-the-shelf and the loader logic is maybe forty lines of real behavior once you strip the variable mangling. The blockchain C2 is genuinely good design from the attacker's side, resilient in a way that no amount of domain seizure can touch, but it is a known technique.
+
+The sophisticated part was 509 space characters, because it targeted the review process rather than the machine. Every tool in the chain was working correctly. The editor rendered the file faithfully. Git stored it faithfully. The diff was accurate. The syntax was valid. It is just that every one of those tools presents a long line by letting it run off the edge, and the attacker knew that reviewers read what they can see.
+
+What caught it was `wc`. Not analysis, not a scanner, not a signature. A file was the wrong size for what it claimed to be, and that was enough to pull on.
+
+If you take one habit from this, take that one. Learn what the boring files in your stack are supposed to weigh. When one of them is three hundred times too big, that is the whole finding. Everything after it is just reading.
