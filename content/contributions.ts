@@ -72,6 +72,18 @@ export const TYPE_META: Record<
 // --- Entries -----------------------------------------------------------------
 export const contributions: Contribution[] = [
   {
+    type: "advisory",
+    ref: "GHSA-r4xp-prcw-77qf",
+    title: "OAuth Proxy lets an attacker sign in as another user",
+    target: "better-auth/better-auth",
+    description:
+      "The OAuth Proxy plugin trusted any profile it could decrypt, and with a cookie state store it shared a secret with sign-in state that carries caller-chosen data. An attacker who knew a user's email could forge a profile and sign in as them. CVSS 7.4, fixed in 1.7.7.",
+    date: "2026-09-30",
+    status: "Published",
+    url: "https://github.com/better-auth/better-auth/security/advisories/GHSA-r4xp-prcw-77qf",
+    tags: ["typescript", "security", "authentication", "cwe-287"],
+  },
+  {
     type: "pr",
     ref: "#932",
     title: "Stop filling the disk when pulling images with oversized blobs",
