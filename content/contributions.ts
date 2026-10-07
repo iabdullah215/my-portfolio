@@ -120,8 +120,8 @@ export const contributions: Contribution[] = [
     tags: ["c", "security", "log-injection", "crlf"],
   },
   {
-    type: "advisory",
-    ref: "GHSA-5293-mq8x-g3xj",
+    type: "cve",
+    ref: "CVE-2026-105801",
     title:
       "Malicious OpenAPI documents can cause arbitrary code generation, executed when anyone imports the generated client",
     target: "openapi-generators/openapi-python-client",
