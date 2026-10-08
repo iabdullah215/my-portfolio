@@ -1,0 +1,300 @@
+---
+title: "Reversing DexGuard String Encryption: Three Layers and One Structural Mistake"
+description: "A commercial Android obfuscator can hide strings behind a difference table, withhold the decryptor from the DEX files entirely, and wrap every call-site argument in framework arithmetic. All three come apart, and the reason is the order the layers are stacked in."
+date: "2026-10-08"
+category: "Security Research"
+tags:
+  - reverse-engineering
+  - android
+  - obfuscation
+  - mobile-security
+  - dalvik
+---
+
+An obfuscator has to solve a problem that has no solution. The application must be able to read its own strings at runtime, offline, on a device the vendor does not control. Everything required to read them therefore ships inside the application. The only question left is how much work the analyst has to do.
+
+> This post describes string-protection constructions emitted by a commercial Android obfuscator, and the general methods for reversing them. Every table, pool, keystream, offset and key below is synthetic and produced by the snippets in this post. No application, package name, hash, endpoint or secret from any engagement appears here, and none of the figures describe a specific target.
+
+## The Problem an Obfuscator Cannot Solve
+
+String encryption is a cost control. It is not a secrecy control, and the distinction matters when you are deciding what to put in a mobile client.
+
+A protected build typically has three independent mechanisms stacked on top of each other:
+
+1. A per-class byte table plus a small decoder, where the table stores differences rather than characters.
+2. A withheld decryptor: the class that performs the real decryption is not in any DEX file and arrives as an encrypted payload loaded at runtime.
+3. A per-class ciphertext pool addressed by a length, an offset and a per-string key, where the arguments at every call site are hidden behind arithmetic on Android framework return values.
+
+Each layer is more work than the one before it. The interesting part is that they are stacked in the wrong order, and layer 1 ends up describing layer 2 in cleartext.
+
+## Layer 1: First Differences in a Byte Table
+
+The first construction gives each class a static `byte[]` and a short private method that builds a byte array and hands it to the `String(byte[], int)` constructor. That constructor signature is the reliable way to find these methods: you do not need names, so identifier renaming is irrelevant to locating them. A renamed method that builds a `String` from a `byte[]` is still a method that builds a `String` from a `byte[]`.
+
+The table does not hold the string. It holds the differences between consecutive characters, so recovery is repeated addition from a starting value:
+
+```python
+def decode(tbl, start, acc, n):
+    """Transcribed from the shape the obfuscator emits: an accumulator
+    walked forward over a difference table."""
+    out, p = bytearray(n), start
+    for i in range(n):
+        out[i] = acc & 0xFF
+        p += 1
+        if p >= len(tbl):
+            break
+        acc = acc + tbl[p] + 1
+    return out.decode("latin-1")
+```
+
+There is no key, no derived key and no device-bound material anywhere in this. The table and the decoder both ship in the APK, so possession of the published application is sufficient.
+
+Decompilers frequently fail on these methods and fall back to printing raw Dalvik. That is not an obstacle. The instruction vocabulary is tiny and transcription is mechanical. The constants differ from class to class, because the obfuscator randomises the accumulator seed, the pointer arithmetic and the operand order, so template matching does not generalise and you either transcribe per decoder or interpret the bytecode directly.
+
+### The structural mistake in layer 1
+
+Here is the part worth internalising. The table fixes the difference between consecutive characters. The starting accumulator is the only per-string variable. That means the character sequence produced from any given start position is fully determined up to a single additive constant.
+
+So you never need to resolve a call site to read this layer. You can enumerate the whole pool from the table alone:
+
+```python
+def harvest(tbl, minlen=8):
+    """Every printable run from every start position and every seed.
+    Runs are maximal, names are not, so keep the prefixes too."""
+    found = set()
+    for start in range(len(tbl)):
+        for acc in range(256):
+            s, p, a = [], start, acc
+            while len(s) < 64:
+                c = a & 0xFF
+                if not (32 <= c < 127):
+                    break
+                s.append(chr(c))
+                p += 1
+                if p >= len(tbl):
+                    break
+                a = a + tbl[p] + 1
+            run = "".join(s)
+            for L in range(minlen, len(run) + 1):
+                found.add(run[:L])
+    return found
+```
+
+Run that against a synthetic 64 byte table holding four names and it recovers all four, with no call-site analysis of any kind:
+
+```text
+table bytes ......................... 64
+candidate strings generated ......... 12,053
+after an identifier-shape filter .... 768
+
+java.lang.String       KEPT
+getDeclaredMethod      KEPT
+dalvik.system.DexFile  KEPT
+loadClass              KEPT
+```
+
+The candidate count is the honest cost: a 64 byte table produces twelve thousand strings, most of them garbage, because every start position crossed with every seed is a valid run. A shape filter on what a Java identifier or class name can look like cuts that by an order of magnitude, and the survivors are readable by eye. Scale it up and you sort by plausibility rather than reading everything.
+
+This matters because resolving call-site arguments is the expensive part of the whole exercise, as the last section shows. For this layer you get to skip it.
+
+## Layer 2: Withholding the Decryptor
+
+Stronger builds move the real decryption routine out of the DEX files altogether. The symptom is specific and easy to miss: a class is referenced by name, the reference resolves at runtime, and the class is defined in none of the DEX files in the package.
+
+```bash
+# the name came out of the layer 1 table; now look for its definition
+$ for d in classes*.dex; do
+>   printf '%s ' "$d"
+>   strings -a "$d" | grep -c '^Lo/someWithheldClass;$'
+> done
+classes.dex 0
+classes2.dex 0
+classes3.dex 0
+```
+
+Zero definitions, yet the code calls it reflectively. The class is arriving from somewhere else.
+
+### Finding the payload
+
+It is stored as an archive entry and decrypted in memory at startup. You find it by entropy, not by name, because the name is meaningless. Encrypted data is close to uniform, so it sits at the top of an entropy ranking, and the only other entries up there are already-compressed media with recognisable magic bytes:
+
+```python
+import collections, math, zipfile
+
+def entropy(b):
+    if not b:
+        return 0.0
+    c = collections.Counter(b)
+    return -sum((v / len(b)) * math.log2(v / len(b)) for v in c.values())
+
+z = zipfile.ZipFile(path)
+rows = []
+for name in z.namelist():
+    if "/" in name or name.endswith(".dex"):
+        continue
+    data = z.read(name)
+    rows.append((entropy(data), len(data), name, data[:8].hex()))
+
+for e, n, name, head in sorted(rows, reverse=True)[:10]:
+    print(f"{e:7.4f} {n:9d}  {name:12} {head}")
+```
+
+An entry with maximal entropy and no recognisable header is the candidate. In the synthetic shape below, every high-entropy entry except one is a PNG:
+
+```text
+entropy      size  name         first bytes
+ 7.9991    198734  Xk           6a6176612f6c616e67 <- no media magic, plaintext marker
+ 7.9986   1842190  Rt           89504e470d0a1a0a   <- PNG
+ 7.9970    221044  Qp           89504e470d0a1a0a   <- PNG
+ 7.9964    410882  Lm           89504e470d0a1a0a   <- PNG
+```
+
+Note the first entry: a short run of ASCII at the front, then uniform noise. A plaintext marker in front of a ciphertext body is a container header, and it is also a reliable fingerprint for finding the same construction in the next build.
+
+Read entries straight from the archive rather than from an extracted tree. Obfuscated resource names are short and generated, and a large fraction of them collide when compared case-insensitively. On a case-insensitive filesystem, `unzip` silently drops the collisions and reports no error, so an extracted directory can be missing a large share of the package while looking complete.
+
+### Layer 1 describes layer 2
+
+You do not have to decrypt the payload to learn what the loader does, because the names the loader needs are themselves in the layer 1 table. Recovering that table hands you the mechanism:
+
+```text
+android.app.AppGlobals, android.app.ActivityThread   locate the running app
+android.content.pm.ApplicationInfo                   find the APK paths
+java.util.zip.ZipInputStream, java.util.zip.ZipEntry walk the archive
+java.io.BufferedInputStream, DataInputStream         read the entry
+dalvik.system.InMemoryDexClassLoader                 load the decrypted DEX
+dalvik.system.BaseDexClassLoader, DexFile            resolve the class
+java.io.File, getCacheDir, getCodeCacheDir           staging
+```
+
+**This is the structural mistake.** The strongest layer in the build is named by the weakest one. The identity of the withheld class, the name of its decryption method and the entire loading mechanism are protected only by a keyless difference table, which is the layer that comes apart first and comes apart without any call-site work. Class encryption adds a step to the analysis. It does not add a barrier, because the step is documented in cleartext by the layer underneath it.
+
+Absence is informative here too. If the recovered name pool contains no reference to `javax.crypto`, `Cipher`, `AES` or `SecretKeySpec`, then the container transform protecting that payload is hand-rolled rather than a platform primitive. You know that before decrypting anything, and it tells you where to spend your time.
+
+## Layer 3: A Per-Class Pool Cipher
+
+The third construction is the one that actually holds the sensitive constants. Each class carries a `char[]` ciphertext pool and a 64 bit salt. Strings are fetched through an accessor taking a length, an offset into the pool and a per-string key, and each character is transformed by two helper methods resolved reflectively out of the withheld class from layer 2.
+
+In practice it reduces to a stream cipher with a per-class keystream:
+
+```text
+plaintext[k] = pool[offset + k]  XOR  key  XOR  G(k)
+
+  pool                 char[], per class
+  salt                 long,   per class, seeds G
+  offset, length, key  per string, read from the call site
+  G(k)                 per-class keystream, a function of k and the salt
+```
+
+The useful consequence: you do not need the withheld class, the reflection, or the helpers. You need `G`. And `G` is shared by every string in the class, so one recovered string gives you the keystream for all of them.
+
+### Recovering the keystream from a crib
+
+Preference key constants make ideal cribs. The call site tells you the string length, and a constant whose field name is `ACCOUNT_REF` very often holds the literal `account_ref`. One correct guess is enough:
+
+```python
+# one known plaintext at a known offset and key
+G = [(pool[off + k] ^ key ^ ord(c)) & 0xFFFF
+     for k, c in enumerate(known_plaintext)]
+
+# now read anything in the same class, up to len(G)
+def dec(pool, G, off, n, key):
+    return "".join(chr((pool[off + k] ^ key ^ G[k]) & 0xFFFF)
+                   for k in range(n))
+```
+
+Derive `G` from two independent strings and check that they agree on the positions they share. If they do, the construction is confirmed and you are not fitting noise.
+
+### The case-bit trap
+
+This one cost me real time, so it is worth stating plainly. If your crib consists only of capitals and underscores, you have not determined the keystream.
+
+Every character in `A` through `Z` has bit `0x20` clear, and so does `_` at `0x5F`. A crib made solely of those characters constrains fifteen bits of each keystream entry and leaves bit `0x20` free. The arithmetic succeeds, the crib round-trips perfectly, and every other string in the class comes out with inverted case:
+
+```text
+crib "ACCOUNT_REF"   ->  keystream derived, round-trips cleanly
+another string       ->  'rESET\x00yoUR\x00'
+with correct keystream ->  'Reset Your '
+```
+
+The tell is the space. A space is `0x20`, so a wrong `0x20` bit turns it into a NUL, and a run of readable text punctuated by nulls where the spaces should be means exactly one thing. Lowercase cribs, or any crib with mixed case, pin the bit properly.
+
+The general lesson is the one every cryptanalysis workflow already knows and that is easy to skip when the arithmetic looks like it is working: validate on a string you did not use to derive the key. If a plaintext you never touched comes out as clean prose, you are right. If it comes out nearly right, you are nearly right, which is a different thing.
+
+### Printability does most of the remaining work
+
+The plaintext is ASCII, so each decrypted unit lands in `0x20` to `0x7E`. The high byte of the result must therefore be zero, which means the high byte of `pool[off+k] ^ G(k)` must equal the high byte of the key, for every position in the string.
+
+That single observation does three jobs:
+
+- It pins the high byte of the per-string key from one string, leaving 256 candidates instead of 65,536.
+- It validates a guessed offset and length. If the high bytes disagree across the span, your parameters are wrong, and you learn that without knowing the plaintext.
+- It extends the keystream past the crib. For position `k`, gather every string in the class longer than `k`. The correct `G(k)` makes all of them printable simultaneously, and with enough strings the survivors collapse to a handful. Score those by character class, favouring letters, digits, spaces and underscores over rare punctuation, and take the best.
+
+Beyond that, crib-drag. A partially decrypted prefix that reads `https://example.co` has a next character you can guess with confidence, and each guess extends the keystream by one position for every string in the class.
+
+## The Opaque Integer Problem
+
+The remaining obstacle is that call-site arguments are not literals. The obfuscator replaces every integer constant with arithmetic over Android framework methods that return fixed values for fixed inputs:
+
+```java
+a((ViewConfiguration.getScrollBarSize() >> 8) + 24,
+  Process.getGidForName("") + 1337,
+  (char) (Color.argb(0, 0, 0, 0) + 40000), out);
+```
+
+Nothing there is random. `getScrollBarSize()` returns 10, so shifted right by 8 it is 0. `getGidForName("")` returns -1. `Color.argb(0,0,0,0)` is 0. The arguments are 24, 1336 and 40000. A static analyser that does not model the framework sees three opaque expressions; a folding table turns them back into integers.
+
+The set is bounded and reusable. A representative selection:
+
+| Expression | Value |
+| --- | --- |
+| `ViewConfiguration.getScrollBarSize()` | 10 |
+| `ViewConfiguration.getMaximumFlingVelocity()` | 8000 |
+| `ViewConfiguration.getTouchSlop()` | 8 |
+| `ViewConfiguration.getDoubleTapTimeout()` | 300 |
+| `KeyEvent.normalizeMetaState(0)` | 0 |
+| `KeyEvent.getDeadChar(0, 0)` | 0 |
+| `TextUtils.indexOf("", "")` | 0 |
+| `TextUtils.lastIndexOf("", '0')` | -1 |
+| `Color.argb(0, 0, 0, 0)` | 0 |
+| `Color.rgb(0, 0, 0)` | -16777216 |
+| `Process.getGidForName("")` | -1 |
+| `View.MeasureSpec.getSize(0)` | 0 |
+| `ExpandableListView.getPackedPositionGroup(0L)` | 0 |
+| `Drawable.resolveOpacity(0, 0)` | 0 |
+| `MotionEvent.axisFromString("")` | -1 |
+
+A second idiom wraps a value that genuinely varies at runtime, then collapses it to its sign:
+
+```java
+(SystemClock.uptimeMillis() > 0L ? 1 : (SystemClock.uptimeMillis() == 0L ? 0 : -1))
+```
+
+The clock reading is not constant, but its sign is, so the expression is always 1. You model the sign, not the value. The same pattern shows up around `AudioTrack.getMaxVolume()`, `Process.getElapsedCpuTime()` and the long-returning `ViewConfiguration` timeouts.
+
+Writing the evaluator is mechanical, with three details that will bite:
+
+- Convert the Java ternary to your host language at every parenthesis level, not just the top one. These expressions nest.
+- Respect 32 bit semantics. `Color.rgb(0,0,0)` is negative, and Java's `>>>` is not an arithmetic shift.
+- Handle the casts. `(char)` is a mask to 16 bits, `(byte)` and `(short)` are sign-preserving truncations, and the obfuscator uses all of them.
+
+Hand-compute a handful of call sites first and assert your evaluator reproduces them before trusting it on thousands. A folding table with one wrong entry does not fail loudly, it silently shifts an offset and hands you plausible-looking garbage.
+
+## What Actually Helps
+
+Not "nothing works", because that is unfair and not useful. Specific things:
+
+**Order the layers so the strongest is not named by the weakest.** This is the finding that generalises. An encrypted payload whose loader describes itself in cleartext, one layer down, in a keyless transform, is an extra step rather than a barrier. If a protection scheme has a bootstrap, the bootstrap is its real strength.
+
+**Prefer cribs the attacker cannot supply.** The pool cipher fell to a guessable preference key. Constants whose plaintext is predictable from their field name are the weakest point in any keystream scheme that shares a keystream across a class.
+
+**Check the control's scope, not its configuration.** String encryption acts on DEX string constants. Resource tables and asset files are usually outside it entirely, so material placed there is untouched no matter how strong the string encryption is. The common failure mode is not a weak control but a control that is enabled in the build configuration and absent in effect in the artifact. Verify against the shipped package, every release.
+
+**Treat client-side string protection as a cost control and budget accordingly.** Anything the application can read offline, an analyst can read offline. That is not a property of this obfuscator, it is a property of shipping code to devices you do not own. Secrets that must stay secret belong on a server, behind an authenticated call, with the client holding nothing that is useful on its own.
+
+## Closing
+
+All three layers here are competent engineering, and the third one in particular is a real increase in cost over a plain difference table. None of it changes the outcome, and the reason is not cryptographic weakness in any individual layer. It is the arrangement: the layer that identifies the withheld decryptor is protected by the construction that comes apart first, and comes apart without even needing the call sites.
+
+That is a design question, not a configuration question, and it is the one worth asking of any client-side protection scheme before deciding what to trust it with.
