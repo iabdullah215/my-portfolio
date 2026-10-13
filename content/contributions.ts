@@ -72,6 +72,32 @@ export const TYPE_META: Record<
 // --- Entries -----------------------------------------------------------------
 export const contributions: Contribution[] = [
   {
+    type: "cve",
+    ref: "CVE-2026-74035",
+    title:
+      "An empty password bypasses both the password policy and the reserved user guard in security.update_user",
+    target: "wazuh/wazuh",
+    description:
+      "update_user kept the length check, the complexity check and the reserved-user guard behind an if password: block, and an empty string is falsy in Python, so all three were skipped. The ORM had no reserved-ID check of its own, so a delegated user administrator could blank the password of the wazuh superuser and sign in as it over basic auth. CVSS 7.2, fixed in 4.14.8.",
+    date: "2026-10-13",
+    status: "Published",
+    url: "https://github.com/wazuh/wazuh/security/advisories/GHSA-27gv-q7q6-f5qh",
+    tags: ["python", "security", "privilege-escalation", "cwe-269"],
+  },
+  {
+    type: "cve",
+    ref: "CVE-2026-93346",
+    title:
+      "API brute-force protection is still bypassable by concurrent login requests",
+    target: "wazuh/wazuh",
+    description:
+      "An earlier fix put the per-IP failed-login counter behind a lock, which made its updates atomic but left the window between the block check at the start of a request and the failure only counted after credential validation. Concurrent requests all clear the check before any failure lands, so max_login_attempts stops applying; a local simulation put 100 of 100 parallel attempts through a limit of 5. CVSS 5.3, fixed in 4.14.8.",
+    date: "2026-10-13",
+    status: "Published",
+    url: "https://github.com/wazuh/wazuh/security/advisories/GHSA-crrg-5qvw-8wjx",
+    tags: ["python", "security", "race-condition", "cwe-307"],
+  },
+  {
     type: "advisory",
     ref: "GHSA-r4xp-prcw-77qf",
     title: "OAuth Proxy lets an attacker sign in as another user",
