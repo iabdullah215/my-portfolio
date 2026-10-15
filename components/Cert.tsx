@@ -16,7 +16,7 @@ const certifications = [
     description: "By INE",
   },
   {
-    title: "ISO/IEC 2700:2022 Information Security Associate",
+    title: "ISO/IEC 27001:2022 Information Security Associate",
     imageSrc: "/Certs/SkillFront.png",
     description: "By Skill Front",
   },
@@ -71,7 +71,7 @@ const certifications = [
     description: "By HackTheBox",
   },
   {
-    title: "Open Access Artical",
+    title: "Open Access Article",
     imageSrc: "/Certs/artical1.png",
     description: "MDPI Publication",
   },
