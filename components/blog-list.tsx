@@ -285,10 +285,10 @@ export function BlogList({ posts }: { posts: BlogListPost[] }) {
                         active !== null && !isActive ? "opacity-40" : ""
                       }`}
                     >
-                      <div className="relative">
+                      <div className="relative min-h-[2.75rem]">
                         <span
                           aria-hidden
-                          className="blog-tile flex h-11 w-11 items-center justify-center border border-border font-mono text-sm text-muted-foreground"
+                          className="blog-tile flex h-11 w-11 items-center justify-center border border-border font-mono text-sm font-bold text-muted-foreground"
                         >
                           {categoryGlyph(post.category)}
                         </span>
@@ -298,36 +298,51 @@ export function BlogList({ posts }: { posts: BlogListPost[] }) {
                       </div>
 
                       <div className="min-w-0">
-                        <span className="blog-reveal" aria-hidden={!isActive}>
-                          <span className="flex flex-wrap gap-px font-mono text-xs">
-                            {post.id === latestId && (
-                              <span className="bg-foreground px-2 py-1 text-background">
-                                Latest
+                        {/* Compact and featured layouts are separate layers
+                            that crossfade; text never re-wraps mid-zoom. */}
+                        <div className="blog-compact">
+                          <div>
+                            <div className="blog-compact-inner">
+                              <h2 className="pt-2 text-lg leading-7 text-foreground">
+                                {post.title}
+                              </h2>
+                              <span className="mt-1 block font-mono text-xs text-muted-foreground sm:hidden">
+                                {date}
                               </span>
-                            )}
-                            {post.category && (
-                              <span className="border border-border px-2 py-[3px] text-muted-foreground">
-                                {post.category}
+                              {post.description && (
+                                <span className="sr-only">{post.description}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="blog-featured" aria-hidden>
+                          <div>
+                            <div className="blog-featured-inner min-h-[8rem]">
+                              <span className="flex flex-wrap gap-px font-mono text-xs">
+                                {post.id === latestId && (
+                                  <span className="bg-foreground px-2 py-1 text-background">
+                                    Latest
+                                  </span>
+                                )}
+                                {post.category && (
+                                  <span className="border border-border px-2 py-[3px] text-muted-foreground">
+                                    {post.category}
+                                  </span>
+                                )}
+                                <span className="px-2 py-1 text-muted-foreground">{date}</span>
                               </span>
-                            )}
-                            <span className="px-2 py-1 text-muted-foreground">{date}</span>
-                          </span>
-                        </span>
-                        <h2 className="blog-title text-lg leading-7 text-foreground">
-                          {post.title}
-                        </h2>
-                        <span className="mt-1 block font-mono text-xs text-muted-foreground sm:hidden">
-                          {date}
-                        </span>
-                        {post.description && (
-                          <span className="blog-reveal" aria-hidden={!isActive}>
-                            <span>
-                              <span className="line-clamp-2 pt-3 text-base leading-relaxed text-muted-foreground">
-                                {post.description}
+                              <span className="mt-3 block text-4xl font-medium leading-[1.15] tracking-tight text-foreground">
+                                {post.title}
                               </span>
-                            </span>
-                          </span>
-                        )}
+                              {post.description && (
+                                <span className="line-clamp-2 pt-3 text-base leading-relaxed text-muted-foreground">
+                                  {post.description}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
                       <span className="whitespace-nowrap pt-2 font-mono text-sm text-muted-foreground">

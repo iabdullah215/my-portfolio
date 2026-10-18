@@ -331,79 +331,124 @@
 
 /*
  * A row "zooms" into the featured layout when components/blog-list.tsx marks
- * it data-active: the tile grows over the date column, the title scales up,
- * and the badge and description rows unfold. Sizes animate (not transforms)
- * so the rows below move with it. Expanding and collapsing rows share one
- * duration and easing, which keeps the cursor inside the row it moved onto
- * while the rows above shrink.
+ * it data-active. Nothing animates font-size or width: the tile is one 8rem
+ * box shown scaled down and scaled up to full size, and the compact and
+ * featured layouts are separate layers that crossfade with a slight scale,
+ * so no text re-wraps mid-animation. Only the row height animates as layout
+ * (grid-template-rows), so the rows below move with it. Expanding and
+ * collapsing rows share the --zoom timing, which keeps the cursor inside
+ * the row it moved onto while the rows above shrink.
+ *
+ * Below sm there is no hover zoom: compact rows only.
  */
 .blog-row {
-  --zoom: 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  --zoom: 0.55s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-.blog-tile {
-  transition: width var(--zoom), height var(--zoom), font-size var(--zoom),
-    background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+.blog-compact {
+  display: grid;
+  grid-template-rows: 1fr;
+}
+
+.blog-featured {
+  display: none;
+  grid-template-rows: 0fr;
+}
+
+.blog-compact > *,
+.blog-featured > * {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.blog-compact-inner,
+.blog-featured-inner {
+  transform-origin: 0 0;
 }
 
 .blog-date {
   transition: opacity 0.25s ease;
 }
 
-.blog-title {
-  padding-top: 0.5rem;
-  transition: font-size var(--zoom), line-height var(--zoom),
-    padding-top var(--zoom), margin-top var(--zoom), color 0.3s ease;
-}
-
-.blog-reveal {
-  display: grid;
-  grid-template-rows: 0fr;
-  opacity: 0;
-  transition: grid-template-rows var(--zoom), opacity 0.3s ease;
-}
-
-.blog-reveal > * {
-  min-height: 0;
-  overflow: hidden;
-}
-
 @media (min-width: 640px) {
-  .blog-row[data-active="true"] .blog-tile {
+  .blog-tile {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 8rem;
     height: 8rem;
-    font-size: 1.75rem;
-    font-weight: 700;
+    border-width: 3px;
+    font-size: 2.5rem;
+    /* 2.75rem / 8rem: the compact tile is the featured tile, zoomed out */
+    transform: scale(0.34375);
+    transform-origin: 0 0;
+    transition: transform var(--zoom), background-color 0.3s ease,
+      border-color 0.3s ease, color 0.3s ease;
+  }
+
+  .blog-featured {
+    display: grid;
+  }
+
+  .blog-compact,
+  .blog-featured {
+    transition: grid-template-rows var(--zoom);
+  }
+
+  /* Collapsing: featured fades out fast, compact fades back in after it */
+  .blog-compact-inner {
+    transition: opacity 0.3s ease 0.1s, transform var(--zoom);
+  }
+
+  .blog-featured-inner {
+    opacity: 0;
+    transform: scale(0.94);
+    transition: opacity 0.15s ease, transform var(--zoom);
+  }
+
+  /* Expanding */
+  .blog-row[data-active="true"] .blog-tile {
+    transform: scale(1);
     border-color: rgb(var(--accent));
     background-color: rgb(var(--accent));
     color: rgb(var(--accent-foreground));
   }
 
+  /* Clear the date quickly so the growing tile never shows it underneath */
   .blog-row[data-active="true"] .blog-date {
     opacity: 0;
+    transition-duration: 0.12s;
   }
 
-  .blog-row[data-active="true"] .blog-title {
-    padding-top: 0;
-    margin-top: 0.75rem;
-    font-size: 2.25rem;
-    line-height: 1.15;
-    font-weight: 500;
-    letter-spacing: -0.02em;
+  .blog-row[data-active="true"] .blog-compact {
+    grid-template-rows: 0fr;
   }
 
-  .blog-row[data-active="true"] .blog-reveal {
+  .blog-row[data-active="true"] .blog-compact-inner {
+    opacity: 0;
+    transform: scale(1.06);
+    transition: opacity 0.15s ease, transform var(--zoom);
+  }
+
+  .blog-row[data-active="true"] .blog-featured {
     grid-template-rows: 1fr;
+  }
+
+  .blog-row[data-active="true"] .blog-featured-inner {
     opacity: 1;
+    transform: none;
+    transition: opacity 0.35s ease 0.05s, transform var(--zoom);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .blog-tile,
   .blog-date,
-  .blog-title,
-  .blog-reveal {
-    transition: none;
+  .blog-compact,
+  .blog-featured,
+  .blog-compact-inner,
+  .blog-featured-inner {
+    transition: none !important;
   }
 }
 
