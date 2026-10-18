@@ -6,6 +6,7 @@ import { Metadata } from "next"
 import { Mdx } from "@/components/mdx-components"
 import { ReadingProgress } from "@/components/reading-progress"
 import { PostSidebar, type TocHeading } from "@/components/post-sidebar"
+import { categoryGlyph } from "@/components/category-glyph"
 
 type PostParams = {
   slug: string[]
@@ -14,14 +15,6 @@ type PostParams = {
 // Next 15 hands `params` to pages and generateMetadata as a Promise.
 interface PostProps {
   params: Promise<PostParams>
-}
-
-// Glyph shown in the hero tile, keyed by post category.
-const categoryGlyphs: Record<string, string> = {
-  "CTF Writeup": ">_",
-  "Security Research": "{}",
-  "Cert Review": "[✓]",
-  Guide: "##",
 }
 
 async function getPostFromParams(params: PostParams) {
@@ -126,7 +119,7 @@ export default async function PostPage({ params }: PostProps) {
             aria-hidden
             className="mb-8 flex h-16 w-16 items-center justify-center bg-accent font-mono text-xl font-bold text-accent-foreground sm:h-20 sm:w-20 sm:text-2xl"
           >
-            {categoryGlyphs[category] ?? "#"}
+            {categoryGlyph(category)}
           </div>
           <h1 className="max-w-[22ch] text-balance text-4xl [overflow-wrap:anywhere] font-medium leading-[1.12] tracking-tight text-foreground sm:text-5xl">
             {post.title}

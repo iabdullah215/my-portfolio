@@ -327,6 +327,86 @@
   content: "FIG " counter(fig, upper-alpha);
 }
 
+/* ==================== Blog list rows ==================== */
+
+/*
+ * A row "zooms" into the featured layout when components/blog-list.tsx marks
+ * it data-active: the tile grows over the date column, the title scales up,
+ * and the badge and description rows unfold. Sizes animate (not transforms)
+ * so the rows below move with it. Expanding and collapsing rows share one
+ * duration and easing, which keeps the cursor inside the row it moved onto
+ * while the rows above shrink.
+ */
+.blog-row {
+  --zoom: 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.blog-tile {
+  transition: width var(--zoom), height var(--zoom), font-size var(--zoom),
+    background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+.blog-date {
+  transition: opacity 0.25s ease;
+}
+
+.blog-title {
+  padding-top: 0.5rem;
+  transition: font-size var(--zoom), line-height var(--zoom),
+    padding-top var(--zoom), margin-top var(--zoom), color 0.3s ease;
+}
+
+.blog-reveal {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows var(--zoom), opacity 0.3s ease;
+}
+
+.blog-reveal > * {
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (min-width: 640px) {
+  .blog-row[data-active="true"] .blog-tile {
+    width: 8rem;
+    height: 8rem;
+    font-size: 1.75rem;
+    font-weight: 700;
+    border-color: rgb(var(--accent));
+    background-color: rgb(var(--accent));
+    color: rgb(var(--accent-foreground));
+  }
+
+  .blog-row[data-active="true"] .blog-date {
+    opacity: 0;
+  }
+
+  .blog-row[data-active="true"] .blog-title {
+    padding-top: 0;
+    margin-top: 0.75rem;
+    font-size: 2.25rem;
+    line-height: 1.15;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+
+  .blog-row[data-active="true"] .blog-reveal {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blog-tile,
+  .blog-date,
+  .blog-title,
+  .blog-reveal {
+    transition: none;
+  }
+}
+
 /*
  * Optional code-fence title (```bash title="exploit.sh") — rendered into the
  * window-chrome header bar, after the traffic-light dots. rehype-pretty-code
