@@ -131,7 +131,7 @@ export default function BlogPage() {
         </p>
       )}
 
-      <div className="not-prose grid gap-5 sm:grid-cols-2">
+      <div className="not-prose grid grid-cols-1 gap-5 sm:grid-cols-2">
         {sortedPosts.map((post, index) => (
           <Reveal
             key={post._id}

@@ -58,7 +58,7 @@ const ProfilePage = () => {
         {/* Soft scrim so text stays legible over the rain */}
         <div
           aria-hidden
-          className="pointer-events-none absolute -inset-x-12 -inset-y-8 -z-10 bg-[radial-gradient(ellipse_at_center,rgb(var(--background)/0.88),transparent_75%)]"
+          className="pointer-events-none absolute -inset-x-4 -inset-y-8 -z-10 sm:-inset-x-12 bg-[radial-gradient(ellipse_at_center,rgb(var(--background)/0.88),transparent_75%)]"
         />
 
         <h1

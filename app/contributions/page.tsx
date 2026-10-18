@@ -110,7 +110,7 @@ export default function ContributionsPage() {
         </p>
       )}
 
-      <div className="not-prose grid gap-5 sm:grid-cols-2">
+      <div className="not-prose grid grid-cols-1 gap-5 sm:grid-cols-2">
         {filtered.map((c, index) => {
           const meta = TYPE_META[c.type];
           return (
