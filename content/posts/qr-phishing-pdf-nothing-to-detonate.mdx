@@ -1,0 +1,312 @@
+---
+title: "Nothing to Detonate: A Phishing PDF Whose Payload Was Only Pixels"
+description: "An empty email with a 51 KB attachment. The PDF had no JavaScript, no OpenAction, no embedded files and not a single link annotation, because the only malicious address in the whole message existed as a 150 by 150 pixel image."
+date: "2026-11-03"
+category: "Security Research"
+tags:
+  - phishing
+  - incident-response
+  - email-security
+  - pdf-analysis
+  - dfir
+---
+
+A client forwarded me an email that felt wrong to them without being able to say why. Subject line about a received handbook, a PDF attached, sender claiming to be the organisation itself. Their gateway had passed it. SPF passed. The attachment was clean under every scanner it had been through.
+
+It was phishing, and the reason nothing caught it is that there was nothing to catch. The entire attack surface of that message was an image.
+
+> Everything below is static analysis of a saved `.eml`. I decoded the QR code offline with a local image library and I never visited the destination. The URLs are published here for blocking and hunting. Do not open them. The organisation that received this is referred to throughout as `[CLIENT]` and the targeted user as `[RECIPIENT]`.
+
+## An Empty Email
+
+The message was 83,876 bytes on disk. Decoding the MIME tree gives four parts:
+
+```text
+multipart/mixed
+├── multipart/alternative
+│   ├── text/plain   (base64)
+│   └── text/html    (base64)
+├── text/calendar    attachment-0, 888 bytes
+└── application/pdf  "[CLIENT].pdf", 51,542 bytes
+```
+
+The `text/plain` and `text/html` parts decode to the same thing: the gateway's own external sender warning banner, then a legal disclaimer. That is the whole body. No greeting, no sentence, no link, no pretext. Nothing a content filter can score, because there is no content.
+
+The `text/calendar` part is the first thing that is actually odd:
+
+```text
+BEGIN:VEVENT
+UID:45951aec-cca1-4425-98ed-a5bc305f0460
+DTSTAMP:20261103T093452Z
+SUMMARY:Distribution
+LOCATION:[CLIENT]
+ORGANIZER:MAILTO:[RECIPIENT]
+ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:MAILTO:[RECIPIENT]
+BEGIN:VALARM
+TRIGGER:-PT15M
+END:VALARM
+```
+
+An invite where the victim is listed as the organiser of their own meeting, titled "Distribution", with a reminder set to fire fifteen minutes before. Some clients will auto add that to a calendar. It is decoration and a second bite at the attention of whoever opens the mail, and it tells you the sender is working from a template rather than writing to a person.
+
+Which leaves the PDF carrying the entire attack.
+
+## The PDF Is Empty Too
+
+The first thing you check in a hostile PDF is whether anything in it can run. I counted every key that matters:
+
+```text
+/JS            0
+/JavaScript    0
+/OpenAction    0
+/AA            0
+/Launch        0
+/EmbeddedFile  0
+/RichMedia     0
+/SubmitForm    0
+/URI           0
+/GoToR         0
+/AcroForm      0
+/XFA           0
+```
+
+Zero across the board. Both pages carry an `/Annots` reference, which is where a link rectangle would live, and when you resolve it:
+
+```text
+13 0 obj
+[]
+endobj
+```
+
+An empty array. There is no clickable region anywhere in the document.
+
+This is a file with nothing for a sandbox to detonate and nothing for a URL reputation engine to look up. A detonation chamber opens it, watches it do absolutely nothing for thirty seconds, and passes it. That verdict is correct. The file really is inert. It is also the delivery mechanism for a credential harvester, and those two facts are not in conflict, which is the entire point of the technique.
+
+The metadata is thin in a way that is worth noting:
+
+```text
+1 0 obj
+<</CreationDate(D:20261103093456Z)>>
+endobj
+```
+
+No `/Producer`, no `/Creator`, just a timestamp. The document carries a named destination called `__WKANCHOR_2`, which is a wkhtmltopdf artifact, so it was rendered from HTML by a toolchain that stripped its own fingerprints. The creation timestamp is `09:34:56Z` and the message `Date` header is `09:34:57Z`. The PDF was generated one second before the mail went out, per recipient, by a script.
+
+## Reading Text That Will Not Copy
+
+Extracting the text is where this gets slightly more involved than usual, and it is worth walking through because it is the step most people skip.
+
+Both pages use Type0 fonts with `Identity-H` encoding and subset embedded TrueType files:
+
+```text
+/Type/Font/Subtype/Type0/BaseFont/ArialBold/Encoding/Identity-H
+  /DescendantFonts[28 0 R]/ToUnicode 29 0 R
+
+/Type/FontDescriptor/FontName/QGBAAA+ArialBold/Flags 4 ... /FontFile2 ...
+```
+
+With `Identity-H`, the bytes in the content stream are glyph indexes into that subset font, not characters. The content stream reads like this:
+
+```text
+BT
+/F8 45 Tf 1 0 0 -1 0 0 Tm
+151 -190 Td <0001> Tj
+27 0 Td <0002> Tj
+27 0 Td <0003> Tj
+ET
+```
+
+Glyph 1, glyph 2, glyph 3. Meaningless on its own. The mapping back to text lives in the `/ToUnicode` CMap, and in this file it uses the array form of `bfrange` rather than the more common `bfchar` list:
+
+```text
+2 beginbfrange
+<0000> <0000> <0000>
+<0001> <002D> [<0048> <0052> <0020> <0053> <006F> <006C> <0075> ... ]
+endbfrange
+```
+
+That single range says glyph `0x01` is `U+0048` (`H`), glyph `0x02` is `U+0052` (`R`), glyph `0x03` is `U+0020` (space), and so on down the array. A naive extractor that only handles `bfchar`, or only handles the `<lo> <hi> <base>` form of `bfrange`, returns a page of replacement characters and you conclude the PDF is image only. It is not. Parse the array form and the page resolves:
+
+```text
+HR Solutions - Workforce
+Management
+
+Hello [RECIPIENT],
+
+You have a pending document that requires your attention:
+
+To conveniently access and navigate the contents of the updated Employee Handbook,
+Please scan the QR code provided below. This will direct you to the digital version of
+the handbook for easy reference and exploration
+
+VIEW/DOWNLOAD DOCUMENT(S)
+```
+
+Page two is one line: a date and the organisation name.
+
+Note what the lure is asking for. Not a click. A scan.
+
+## Decoding the QR Without Scanning It
+
+Two images are embedded, both `DCTDecode`:
+
+| Object | Dimensions | Content |
+| --- | --- | --- |
+| Im6 | 52 x 64 | Microsoft account shield icon |
+| Im10 | 150 x 150 | QR code with the Outlook logo in the centre |
+
+A 150 by 150 image is QR sized, and carving the JPEGs out by scanning for `FFD8FF` through `FFD9` confirmed it immediately.
+
+The obvious move here is to point your phone at it. Do not. That hands the operator a real device and a real session, and if the page is live you are one autofilled password manager entry away from a genuinely bad afternoon. Decode it in a process that cannot make outbound requests.
+
+No `zbarimg`, no `pyzbar`, no OpenCV on the box, and no appetite for installing any of them to touch hostile input. macOS ships a QR detector in CoreImage, which is eleven lines of Swift and never touches the network:
+
+```swift
+import Foundation
+import CoreImage
+
+let p = CommandLine.arguments[1]
+guard let img = CIImage(contentsOf: URL(fileURLWithPath: p)) else { exit(1) }
+let d = CIDetector(ofType: CIDetectorTypeQRCode,
+                   context: nil,
+                   options: [CIDetectorAccuracy: CIDetectorAccuracyHigh])!
+for f in d.features(in: img) {
+    if let q = f as? CIQRCodeFeature {
+        print("QR PAYLOAD: \(q.messageString ?? "nil")")
+    }
+}
+```
+
+The payload:
+
+```text
+https://iammarcas.com/technology/FW35E?emx=[RECIPIENT],
+https://iammarcas.com/technology/S3HW7XP4?emx=[RECIPIENT]
+```
+
+Two URLs, comma joined in a single QR. Most scanners will take the first and ignore the rest.
+
+## The Part That Makes It Work
+
+Look at the query string. `emx=` is the recipient's own email address, baked into the QR at generation time.
+
+That is why the PDF had to be built per recipient one second before sending. The landing page does not have to ask who you are. It greets you by address, shows you a login form that already knows your account, and all you have to supply is the password. A page that already knows your email reads as a page you have been to before.
+
+The Outlook logo sitting in the middle of the QR and the Microsoft account icon at the top of the PDF settle what is being harvested. This is a Microsoft 365 credential grab dressed as an HR document.
+
+The technique earns its place for two reasons that have nothing to do with the code quality:
+
+**It moves the click to a device you do not control.** Corporate proxy, endpoint agent, browser isolation, managed extensions: all of that lives on the laptop. The QR puts the login form on a personal phone, on cellular, outside every control the organisation owns. Nothing in the enterprise telemetry sees the page load, and nothing sees the password go in.
+
+**It leaves no string to scan.** The address is not in the headers, not in the body, not in a link annotation, not in the document text. It is the spatial arrangement of black squares in a JPEG. Detecting it means rendering images and running a QR decoder across every inbound attachment, which most mail stacks do not do.
+
+## It Authenticated Cleanly
+
+This is the part worth sitting with, because the mail was not spoofed in any way a protocol could object to.
+
+```text
+received-spf: Pass (protection.outlook.com: domain of rsend.din-asia.com
+ designates 54.240.11.28 as permitted sender)
+ client-ip=54.240.11.28; helo=a11-28.smtp-out.amazonses.com
+```
+
+SPF passed, legitimately, because the mail genuinely was sent through Amazon SES by a party authorised to send as that domain. Following the envelope domain:
+
+```text
+rsend.din-asia.com.  CNAME  rsend.forge.rmta.net.
+rsend.din-asia.com.  TXT    "v=spf1 include:amazonses.com ~all"
+rsend.din-asia.com.  MX     10 feedback-smtp.us-east-1.amazonses.com.
+```
+
+A subdomain delegated wholesale to a third party bulk sending platform running on SES. That is an ordinary marketing setup. Thousands of real businesses have exactly this.
+
+The organisational domain is where it gets interesting:
+
+```text
+din-asia.com.          A    157.20.105.252
+din-asia.com.          TXT  "v=spf1 ip4:157.20.105.252 include:spf-c.mailbaby.net
+                             ip4:159.195.95.192 ip4:64.120.94.82 ip4:192.250.235.188
+                             include:spf.mysecurecloudhost.com +a +mx
+                             +ip4:85.187.128.10 ~all"
+_dmarc.din-asia.com.   TXT  (no record)
+```
+
+Created in 2019, registered through Porkbun, sending authorised from five different providers, and **no DMARC record at all**. This is an aged, real looking business domain with sprawling mail configuration and no policy governing who may send as it. Either the bulk sending account was taken over or it was rented, and from the receiving end those look identical. What matters is that the message arrives with a clean SPF pass from a domain with years of history, which is worth more to the sender than any amount of display name trickery.
+
+The payload host is the opposite profile:
+
+```text
+iammarcas.com.         A     23.239.110.118      (Linode)
+_dmarc.iammarcas.com.  TXT   "v=DMARC1; p=none;"
+```
+
+Registered 2025-12-10 through Purple IT Ltd, behind Privacy Protect, and the live nameservers (`ns1/ns2.hostorbis.com`) do not match the ones in the registry record (`ns5/ns6.jamunaweb.com`), with the domain updated on 2026-08-23. Recently repointed infrastructure under privacy protection, which is the normal shape of a disposable landing page host.
+
+Two smaller tells. The `From` display name is stuffed with query string debris:
+
+```text
+From: [CLIENT] |Remuneration|Earnings|Function|Measure=VIEW&eid=City&hl=en&es=0
+      <contact@din-asia.com>
+```
+
+That is template filler and filter evasion noise, and it is the single most human readable sign that something is wrong with this message. And the `Subject` and `Thread-Topic` are RFC 2047 encoded in a split base64 and quoted printable pair for a string that is plain ASCII apart from one dash, which is the sort of thing bulk tooling does and a person's mail client does not.
+
+## The Headers That Were Not There
+
+One finding I could not close, and it is worth being honest about where the evidence stops.
+
+```bash
+$ grep -c -iE "^(DKIM-Signature|Authentication-Results|ARC-)" msg.eml
+0
+```
+
+No DKIM signature, no Authentication-Results, no ARC chain, and no `Feedback-ID`. Genuine SES mail always carries a DKIM signature and a `Feedback-ID` header. Their absence looks like a finding.
+
+It probably is not one. The `Received` chain terminates at Exchange Online and the file is full of `X-MS-Exchange-Organization-*` headers, which means this `.eml` was exported from the recipient's mailbox by Outlook, and Outlook routinely drops those headers on export. The evidence is consistent with both "the headers were never there" and "the export ate them", and nothing in the file I was given distinguishes the two.
+
+So it goes in the report as an open question with a specific ask attached: pull the original from message tracking and it resolves in thirty seconds. Writing it up as a finding would have been easy and it would have been wrong.
+
+## Indicators
+
+Attacker side infrastructure only. Recipient and organisation identifiers are left out.
+
+| Type | Value |
+| --- | --- |
+| Sender | `contact@din-asia.com` |
+| Envelope domain | `rsend.din-asia.com` (CNAME to `rsend.forge.rmta.net`) |
+| Sending IP | `54.240.11.28` (Amazon SES) |
+| Payload domain | `iammarcas.com` |
+| Payload IP | `23.239.110.118` (Linode) |
+| Payload URLs | `/technology/FW35E?emx=` and `/technology/S3HW7XP4?emx=` |
+| Attachment SHA-256 | `ee67466f2884ff2d40ceb6a4c8a221538cc0db83043f5608a361eb4e5a963c98` |
+| Attachment MD5 | `82b6b1b9a2b2de5c021912b5df386ad3` |
+| Message-ID | `010001a1a0c30319-b81d8a47-6914-4663-a1fc-b73eb877476f-000000@email.amazonses.com` |
+| Calendar UID | `45951aec-cca1-4425-98ed-a5bc305f0460` |
+| PDF structure | 2 pages, no active content, empty `/Annots`, no `/Producer`, `__WKANCHOR_2` destination |
+
+The durable signal is none of those, because all of them are cheap to change. It is the shape: an inbound PDF with zero active content, zero link annotations, and a square image between roughly 100 and 400 pixels on a side. That combination has almost no legitimate use in attachment traffic, and unlike a domain or a hash it costs the operator real capability to avoid.
+
+## Triage Notes
+
+If you are looking at one of these, the order that matters:
+
+Pull the embedded images and decode any QR before anything else, because the URL is the only thing that tells you what the campaign wants.
+
+```bash
+# carve JPEGs out of the PDF by SOI/EOI markers, then decode offline
+swift qr.swift ./img1.jpg
+```
+
+Check active content second, and treat a completely clean result as a signal rather than an all clear. Inert is the design.
+
+Then go to the sign in logs, and understand why. A QR scan happens on a phone, so there is no proxy log, no endpoint telemetry, no browser history on the managed device, and no DNS query from your network. If the user scanned it, **the only witness anywhere in your estate is the authentication log**. Look for unfamiliar ASNs, new device registrations, and most of all a newly registered MFA method or a new mailbox forwarding rule, which is what the operator sets up the moment the password lands.
+
+Then hunt the tenant on sender, subject and attachment hash, because these arrive in waves and the first one you see is rarely the only one.
+
+## What I Took Away
+
+Every control in the path did its job. SPF evaluated a real authorisation and returned a true answer. The sandbox opened a file that genuinely does nothing. The URL scanner found no URLs because there were no URLs. The gateway even stamped its external sender warning on the top of the body, correctly. Not one of those systems failed, and the message still landed in front of a human being with a credential harvester attached.
+
+What the attacker built was not a clever file. It is a two page PDF with no code in it. What they built was a path through the controls that is not addressable by the controls, by relocating the only dangerous artifact into a format machines in that path do not read, and relocating the click onto hardware the organisation does not own.
+
+The defence is the same thing in reverse, and it is unglamorous. Decode the images. A QR code in an unsolicited attachment is a URL that your stack has agreed not to look at, and the only reason it works is that everyone is still treating pictures as decoration.
