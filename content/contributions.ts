@@ -72,6 +72,19 @@ export const TYPE_META: Record<
 // --- Entries -----------------------------------------------------------------
 export const contributions: Contribution[] = [
   {
+    type: "advisory",
+    ref: "Apple 149035",
+    title:
+      "Missing headroom check on TX checksum offset causes kernel OOB copy",
+    target: "apple/xnu",
+    description:
+      "Skywalk's TX metadata validation checked the checksum start offset against the packet length but never against its headroom, so dp_copy_to_dev_pkt computed start minus headroom, wrapped it as a uint16_t and used it as a copy length. An unprivileged process reached it over NECP on stock Wi-Fi and panicked the kernel. Fixed in iOS 27, iPadOS 27 and macOS Golden Gate 27, credited under Kernel.",
+    date: "2026-09-14",
+    status: "Acknowledged",
+    url: "https://support.apple.com/en-us/149035",
+    tags: ["c", "security", "kernel", "cwe-191"],
+  },
+  {
     type: "cve",
     ref: "CVE-2026-74035",
     title:
