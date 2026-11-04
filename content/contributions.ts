@@ -73,6 +73,19 @@ export const TYPE_META: Record<
 export const contributions: Contribution[] = [
   {
     type: "advisory",
+    ref: "VULN-206696",
+    title:
+      "A sanitization-order defect in kiota's Javadoc escaping lets a crafted OpenAPI description execute arbitrary Java at class-init",
+    target: "microsoft/kiota",
+    description:
+      "kiota generate -l java never neutralized the Javadoc terminator */ in text taken from the OpenAPI description, so a crafted description field closed the generated doc comment and the remainder was emitted as Java source, running as soon as the developer compiled and loaded the client. The strip exists in RemoveInvalidDescriptionCharacters and every sibling language writer defends the same sink; Java is the only one whose passes run in the wrong order. Recognized under MSRC Special Mentions, fix pending.",
+    date: "2026-11-03",
+    status: "Acknowledged",
+    url: "https://msrc.microsoft.com/special-mention",
+    tags: ["csharp", "security", "code-injection", "cwe-94"],
+  },
+  {
+    type: "advisory",
     ref: "GHSA-q747-mqgr-4gh7",
     title: "Phone numbers can be claimed before they are verified",
     target: "better-auth/better-auth",
