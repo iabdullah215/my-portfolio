@@ -73,6 +73,56 @@ export const TYPE_META: Record<
 export const contributions: Contribution[] = [
   {
     type: "advisory",
+    ref: "GHSA-q747-mqgr-4gh7",
+    title: "Phone numbers can be claimed before they are verified",
+    target: "better-auth/better-auth",
+    description:
+      "Sign-up and other flows stored a phone number on an account before anyone proved they owned it, and phone OTP sign-in looked the account up by number without requiring phoneNumberVerified. An attacker could save a victim's number on an account they control, so the victim's own valid code signed them into the attacker's account. Verification codes also shared a namespace with other flows, so a predictable record identifier cancelled another user's pending code. CVSS 8.1, fixed in 1.7.16.",
+    date: "2026-11-03",
+    status: "Published",
+    url: "https://github.com/better-auth/better-auth/security/advisories/GHSA-q747-mqgr-4gh7",
+    tags: ["typescript", "security", "authentication", "cwe-287"],
+  },
+  {
+    type: "advisory",
+    ref: "GHSA-x8j7-xh58-rv6x",
+    title:
+      "Stripe plugin: billing actions can target another customer's Stripe account",
+    target: "better-auth/better-auth",
+    description:
+      "stripeCustomerId lived on the user record without input: false, so the generic sign-up and update-user routes accepted it and a user could replace their own with another customer's. The billing portal, checkout and webhook handling then treated that customer as theirs, exposing invoices and billing details and allowing payment-method, cancellation and plan changes. CVSS 5.9, fixed in @better-auth/stripe 1.7.16.",
+    date: "2026-11-03",
+    status: "Published",
+    url: "https://github.com/better-auth/better-auth/security/advisories/GHSA-x8j7-xh58-rv6x",
+    tags: ["typescript", "security", "access-control", "cwe-639"],
+  },
+  {
+    type: "advisory",
+    ref: "GHSA-c85h-5mrr-mgx4",
+    title: "Organization admins can invite an owner with a padded role name",
+    target: "better-auth/better-auth",
+    description:
+      "The organization plugin compared the raw invitation role against the creator role, while every later check split and trimmed it, so \" owner\" passed the non-owner guard and became owner once the invitation was accepted. An admin could invite an account they control as a real owner, which can then delete the organization and remove the original owners. CVSS 4.9, fixed in 1.7.16.",
+    date: "2026-11-03",
+    status: "Published",
+    url: "https://github.com/better-auth/better-auth/security/advisories/GHSA-c85h-5mrr-mgx4",
+    tags: ["typescript", "security", "privilege-escalation", "cwe-863"],
+  },
+  {
+    type: "advisory",
+    ref: "GHSA-gv75-j3v8-3crm",
+    title:
+      "Passkey verification does not enforce origin or user verification",
+    target: "better-auth/better-auth",
+    description:
+      "The passkey handlers took the expected WebAuthn origin from the request rather than from configuration, and never checked the user-verification flag they had asked the authenticator to set. A passkey could be registered or used without the PIN or biometric the application required, and a response minted on another origin under the same rpID was accepted. CVSS 3.1, fixed in @better-auth/passkey 1.7.16.",
+    date: "2026-11-03",
+    status: "Published",
+    url: "https://github.com/better-auth/better-auth/security/advisories/GHSA-gv75-j3v8-3crm",
+    tags: ["typescript", "security", "webauthn", "cwe-346"],
+  },
+  {
+    type: "advisory",
     ref: "Apple 149035",
     title:
       "Missing headroom check on TX checksum offset causes kernel OOB copy",
